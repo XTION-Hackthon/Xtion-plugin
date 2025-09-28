@@ -6,17 +6,22 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		1E359E6F2E8958AC00126BEF /* XtionPluginApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E359E6C2E8958AC00126BEF /* XtionPluginApp.swift */; };
+		1E359E702E8958AC00126BEF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1E359E6A2E8958AC00126BEF /* Assets.xcassets */; };
+		1E359E762E8959BA00126BEF /* KeySpy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E359E752E8959BA00126BEF /* KeySpy.swift */; };
+		1E359E7A2E8959F600126BEF /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E359E792E8959F600126BEF /* AppDelegate.swift */; };
+		1E359E842E895DCE00126BEF /* AudioController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E359E832E895DCE00126BEF /* AudioController.swift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		1E359E5C2E89569A00126BEF /* Xtion-plugin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Xtion-plugin.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		1E359E6A2E8958AC00126BEF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		1E359E6C2E8958AC00126BEF /* XtionPluginApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XtionPluginApp.swift; sourceTree = "<group>"; };
+		1E359E752E8959BA00126BEF /* KeySpy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeySpy.swift; sourceTree = "<group>"; };
+		1E359E792E8959F600126BEF /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		1E359E832E895DCE00126BEF /* AudioController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
-
-/* Begin PBXFileSystemSynchronizedRootGroup section */
-		1E359E5E2E89569A00126BEF /* Xtion-plugin */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Xtion-plugin";
-			sourceTree = "<group>";
-		};
-/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		1E359E592E89569A00126BEF /* Frameworks */ = {
@@ -32,7 +37,7 @@
 		1E359E532E89569A00126BEF = {
 			isa = PBXGroup;
 			children = (
-				1E359E5E2E89569A00126BEF /* Xtion-plugin */,
+				1E359E6D2E8958AC00126BEF /* Xtion-plugin */,
 				1E359E5D2E89569A00126BEF /* Products */,
 			);
 			sourceTree = "<group>";
@@ -43,6 +48,34 @@
 				1E359E5C2E89569A00126BEF /* Xtion-plugin.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		1E359E6D2E8958AC00126BEF /* Xtion-plugin */ = {
+			isa = PBXGroup;
+			children = (
+				1E359E782E8959E400126BEF /* App */,
+				1E359E772E8959DA00126BEF /* Module */,
+			);
+			path = "Xtion-plugin";
+			sourceTree = "<group>";
+		};
+		1E359E772E8959DA00126BEF /* Module */ = {
+			isa = PBXGroup;
+			children = (
+				1E359E752E8959BA00126BEF /* KeySpy.swift */,
+				1E359E832E895DCE00126BEF /* AudioController.swift */,
+			);
+			path = Module;
+			sourceTree = "<group>";
+		};
+		1E359E782E8959E400126BEF /* App */ = {
+			isa = PBXGroup;
+			children = (
+				1E359E6A2E8958AC00126BEF /* Assets.xcassets */,
+				1E359E6C2E8958AC00126BEF /* XtionPluginApp.swift */,
+				1E359E792E8959F600126BEF /* AppDelegate.swift */,
+			);
+			path = App;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -59,9 +92,6 @@
 			buildRules = (
 			);
 			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				1E359E5E2E89569A00126BEF /* Xtion-plugin */,
 			);
 			name = "Xtion-plugin";
 			packageProductDependencies = (
@@ -109,6 +139,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1E359E702E8958AC00126BEF /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -119,6 +150,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1E359E842E895DCE00126BEF /* AudioController.swift in Sources */,
+				1E359E7A2E8959F600126BEF /* AppDelegate.swift in Sources */,
+				1E359E6F2E8958AC00126BEF /* XtionPluginApp.swift in Sources */,
+				1E359E762E8959BA00126BEF /* KeySpy.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
