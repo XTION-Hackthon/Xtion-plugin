@@ -24,7 +24,7 @@
 		1E359E792E8959F600126BEF /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		1E359E832E895DCE00126BEF /* AudioController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioController.swift; sourceTree = "<group>"; };
 		1E48A9B32E8ABF51005B14CB /* DistortionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DistortionController.swift; sourceTree = "<group>"; };
-		1EA310D32E8ABCB000336263 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		1EA310D32E8ABCB000336263 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		1EEAAD212E8AC3AF00D74619 /* Shaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Shaders.metal; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -58,7 +58,6 @@
 		1E359E6D2E8958AC00126BEF /* Xtion-plugin */ = {
 			isa = PBXGroup;
 			children = (
-				1EA310D32E8ABCB000336263 /* Info.plist */,
 				1E359E782E8959E400126BEF /* App */,
 				1E359E772E8959DA00126BEF /* Module */,
 			);
@@ -69,6 +68,7 @@
 			isa = PBXGroup;
 			children = (
 				1E359E752E8959BA00126BEF /* KeySpy.swift */,
+				1E48A9B32E8ABF51005B14CB /* DistortionController.swift */,
 				1E359E832E895DCE00126BEF /* AudioController.swift */,
 			);
 			path = Module;
@@ -77,10 +77,10 @@
 		1E359E782E8959E400126BEF /* App */ = {
 			isa = PBXGroup;
 			children = (
+				1EA310D32E8ABCB000336263 /* Info.plist */,
 				1E359E6A2E8958AC00126BEF /* Assets.xcassets */,
 				1E359E6C2E8958AC00126BEF /* XtionPluginApp.swift */,
 				1E359E792E8959F600126BEF /* AppDelegate.swift */,
-				1E48A9B32E8ABF51005B14CB /* DistortionController.swift */,
 				1EEAAD212E8AC3AF00D74619 /* Shaders.metal */,
 			);
 			path = App;
@@ -304,7 +304,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "Xtion-plugin/Info.plist";
+				INFOPLIST_FILE = "Xtion-plugin/App/Info.plist";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -337,7 +337,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "Xtion-plugin/Info.plist";
+				INFOPLIST_FILE = "Xtion-plugin/App/Info.plist";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
