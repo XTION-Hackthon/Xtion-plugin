@@ -6,46 +6,85 @@ import SwiftUI
 import Metal
 import MetalKit
 import QuartzCore
+import ScreenCaptureKit
 
-@MainActor
-class DistortionController: ObservableObject {
-    @Published var isActive = false
+@Observable @MainActor
+class DistortionController {
+    var isActive = false
     
     private var overlayWindow: NSWindow?
     private var metalView: MTKView?
     private var renderer: DistortionRenderer?
-    private var displayLink: CADisplayLink?
+    private var displayLink: CVDisplayLink?
+    private var stopTimer: Timer?
     
-    func startDistortion() {
-        guard !isActive else { return }
+    func startDistortion() async {
+        guard !isActive else { 
+            print("扭曲效果已经在运行中")
+            return 
+        }
         
+        print("开始启动扭曲效果...")
+        
+        await setupScreenCapture()
         setupOverlayWindow()
         setupMetal()
         startDisplayLink()
         
+        // 3秒后自动停止
+        stopTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { _ in
+            Task { @MainActor in
+                self.stopDistortion()
+            }
+        }
+        
         isActive = true
+        print("扭曲效果已启动")
     }
     
     func stopDistortion() {
         guard isActive else { return }
         
-        displayLink?.invalidate()
+        print("停止扭曲效果...")
+        
+        stopTimer?.invalidate()
+        stopTimer = nil
+        
+        if let displayLink = displayLink {
+            CVDisplayLinkStop(displayLink)
+        }
         displayLink = nil
         
+        // 停止屏幕捕获
+        renderer?.stopCapture()
+        
+        // 确保窗口被正确移除
         overlayWindow?.orderOut(nil)
+        overlayWindow?.contentView = nil
         overlayWindow = nil
+        
         metalView = nil
         renderer = nil
         
         isActive = false
+        print("扭曲效果已停止")
+    }
+    
+    private func setupScreenCapture() async {
+        do {
+            _ = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+            print("屏幕捕获权限已获得")
+        } catch {
+            print("无法获取屏幕捕获权限: \(error)")
+        }
     }
     
     private func setupOverlayWindow() {
-        // 获取主屏幕尺寸
         guard let screen = NSScreen.main else { return }
         let screenRect = screen.frame
         
-        // 创建全屏覆盖窗口
+        print("创建覆盖窗口，尺寸: \(screenRect)")
+        
         overlayWindow = NSWindow(
             contentRect: screenRect,
             styleMask: [.borderless],
@@ -56,10 +95,9 @@ class DistortionController: ObservableObject {
         overlayWindow?.level = .screenSaver
         overlayWindow?.isOpaque = false
         overlayWindow?.backgroundColor = .clear
-        overlayWindow?.ignoresMouseEvents = false
+        overlayWindow?.ignoresMouseEvents = true
         overlayWindow?.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         
-        // 创建 Metal 视图
         metalView = MTKView(frame: screenRect)
         metalView?.wantsLayer = true
         metalView?.layer?.isOpaque = false
@@ -82,11 +120,25 @@ class DistortionController: ObservableObject {
     }
     
     private func startDisplayLink() {
-        displayLink = CADisplayLink(target: self, selector: #selector(updateFrame))
-        displayLink?.add(to: .main, forMode: .common)
+        var displayLink: CVDisplayLink?
+        CVDisplayLinkCreateWithActiveCGDisplays(&displayLink)
+        
+        if let displayLink = displayLink {
+            let callback: CVDisplayLinkOutputCallback = { _, _, _, _, _, userInfo in
+                let controller = Unmanaged<DistortionController>.fromOpaque(userInfo!).takeUnretainedValue()
+                DispatchQueue.main.async {
+                    controller.updateFrame()
+                }
+                return kCVReturnSuccess
+            }
+            
+            CVDisplayLinkSetOutputCallback(displayLink, callback, Unmanaged.passUnretained(self).toOpaque())
+            CVDisplayLinkStart(displayLink)
+            self.displayLink = displayLink
+        }
     }
     
-    @objc private func updateFrame() {
+    private func updateFrame() {
         renderer?.updateTime()
         metalView?.needsDisplay = true
     }
@@ -98,7 +150,10 @@ class DistortionRenderer: NSObject, MTKViewDelegate {
     private var pipelineState: MTLRenderPipelineState?
     private var screenTexture: MTLTexture?
     private var time: Float = 0
+    private var captureTask: Task<Void, Never>?
+    private var initialScreenshot: MTLTexture?
     
+    // 修复顶点坐标 - 确保正确的纹理映射
     private let vertices: [Float] = [
         -1.0, -1.0, 0.0, 1.0,  // 左下
          1.0, -1.0, 1.0, 1.0,  // 右下
@@ -111,12 +166,24 @@ class DistortionRenderer: NSObject, MTKViewDelegate {
         self.commandQueue = device.makeCommandQueue()!
         super.init()
         setupPipeline()
+        startScreenCapture()
     }
     
     private func setupPipeline() {
-        let library = device.makeDefaultLibrary()
-        let vertexFunction = library?.makeFunction(name: "vertex_main")
-        let fragmentFunction = library?.makeFunction(name: "fragment_main")
+        guard let library = device.makeDefaultLibrary() else {
+            print("无法创建默认库")
+            return
+        }
+        
+        guard let vertexFunction = library.makeFunction(name: "vertex_main") else {
+            print("无法找到顶点着色器函数 vertex_main")
+            return
+        }
+        
+        guard let fragmentFunction = library.makeFunction(name: "fragment_main") else {
+            print("无法找到片段着色器函数 fragment_main")
+            return
+        }
         
         let pipelineDescriptor = MTLRenderPipelineDescriptor()
         pipelineDescriptor.vertexFunction = vertexFunction
@@ -133,6 +200,17 @@ class DistortionRenderer: NSObject, MTKViewDelegate {
         }
     }
     
+    private func startScreenCapture() {
+        captureTask = Task {
+            // 只捕获一次初始屏幕截图，避免递归
+            await captureInitialScreen()
+        }
+    }
+    
+    func stopCapture() {
+        captureTask?.cancel()
+    }
+    
     func updateTime() {
         time += 1.0 / 60.0
     }
@@ -144,9 +222,6 @@ class DistortionRenderer: NSObject, MTKViewDelegate {
               let pipelineState = pipelineState,
               let renderPassDescriptor = view.currentRenderPassDescriptor else { return }
         
-        // 捕获屏幕
-        captureScreen()
-        
         let commandBuffer = commandQueue.makeCommandBuffer()!
         let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)!
         
@@ -155,11 +230,12 @@ class DistortionRenderer: NSObject, MTKViewDelegate {
         // 传递顶点数据
         renderEncoder.setVertexBytes(vertices, length: vertices.count * MemoryLayout<Float>.size, index: 0)
         
-        // 传递纹理和时间参数
-        if let texture = screenTexture {
+        // 使用初始截图而不是实时捕获
+        if let texture = initialScreenshot {
             renderEncoder.setFragmentTexture(texture, index: 0)
         }
-        renderEncoder.setFragmentBytes(&time, length: MemoryLayout<Float>.size, index: 0)
+        var timeValue = time
+        renderEncoder.setFragmentBytes(&timeValue, length: MemoryLayout<Float>.size, index: 0)
         
         renderEncoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
         renderEncoder.endEncoding()
@@ -168,19 +244,38 @@ class DistortionRenderer: NSObject, MTKViewDelegate {
         commandBuffer.commit()
     }
     
-    private func captureScreen() {
-        guard let screen = NSScreen.main else { return }
-        let screenRect = screen.frame
-        
-        let imageRef = CGWindowListCreateImage(screenRect, .optionOnScreenOnly, kCGNullWindowID, .bestResolution)
-        guard let cgImage = imageRef else { return }
-        
-        // 将 CGImage 转换为 Metal 纹理
-        let textureLoader = MTKTextureLoader(device: device)
+    private func captureInitialScreen() async {
         do {
-            screenTexture = try textureLoader.newTexture(cgImage: cgImage, options: nil)
+            let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+            guard let display = content.displays.first else { return }
+            
+            let configuration = SCStreamConfiguration()
+            let contentFilter = SCContentFilter(display: display, excludingWindows: [])
+            
+            // 确保捕获完整的屏幕区域
+            configuration.width = Int(display.width)
+            configuration.height = Int(display.height)
+            configuration.scalesToFit = false
+            
+            let image = try await SCScreenshotManager.captureImage(
+                contentFilter: contentFilter,
+                configuration: configuration
+            )
+            
+            let textureLoader = MTKTextureLoader(device: device)
+            initialScreenshot = try await textureLoader.newTexture(cgImage: image, options: [
+                .textureUsage: MTLTextureUsage.shaderRead.rawValue,
+                .textureStorageMode: MTLStorageMode.private.rawValue
+            ])
+            
+            print("初始屏幕截图已捕获")
+            
         } catch {
-            print("无法创建屏幕纹理: \(error)")
+            print("无法捕获屏幕: \(error)")
         }
+    }
+    
+    deinit {
+        captureTask?.cancel()
     }
 }
