@@ -61,12 +61,29 @@ class DistortionController {
 
 @MainActor
 class DistortionSession {
+    // MARK: - Constants
+    private enum Constants {
+        static let pixelFormat: MTLPixelFormat = .bgra8Unorm
+        
+        /// 根据屏幕能力返回最佳帧率
+        static func preferredFPS(for screen: NSScreen) -> Int {
+            // 检测是否支持 ProMotion (120Hz+)
+            if screen.maximumFramesPerSecond >= 120 {
+                return 120
+            }
+            return 60
+        }
+    }
+    
+    // MARK: - Properties
     private let overlayWindow: NSWindow
     private let metalView: MTKView
     private let renderer: Renderer
     private let captureTask: Task<Void, Never>
     
+    // MARK: - Initialization
     init(effect: DistortionEffect) async throws {
+        // 请求屏幕捕获权限 (即使不直接使用结果,也能触发权限请求)
         _ = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
         
         guard let screen = NSScreen.main else {
@@ -77,6 +94,7 @@ class DistortionSession {
             throw DistortionError.metalNotAvailable
         }
         
+        // 初始化组件
         overlayWindow = Self.createOverlayWindow(for: screen)
         metalView = Self.createMetalView(for: screen, device: device)
         overlayWindow.contentView = metalView
@@ -87,18 +105,19 @@ class DistortionSession {
         
         overlayWindow.makeKeyAndOrderFront(nil)
         
-        // 简化:只需要一个 Task 用于屏幕捕获
-        let renderer = self.renderer
-        captureTask = Task {
+        // 启动屏幕捕获
+        captureTask = Task { [renderer] in
             await renderer.startCapturing()
         }
     }
     
     deinit {
         captureTask.cancel()
+        metalView.delegate = nil
         overlayWindow.orderOut(nil)
     }
     
+    // MARK: - Factory Methods
     private static func createOverlayWindow(for screen: NSScreen) -> NSWindow {
         let window = NSWindow(
             contentRect: screen.frame,
@@ -120,9 +139,9 @@ class DistortionSession {
     private static func createMetalView(for screen: NSScreen, device: MTLDevice) -> MTKView {
         let metalView = MTKView(frame: screen.frame)
         metalView.device = device
-        metalView.colorPixelFormat = .bgra8Unorm
+        metalView.colorPixelFormat = Constants.pixelFormat
         metalView.framebufferOnly = false
-        metalView.preferredFramesPerSecond = 60
+        metalView.preferredFramesPerSecond = Constants.preferredFPS(for: screen)
         metalView.wantsLayer = true
         metalView.layer?.isOpaque = false
         metalView.layer?.backgroundColor = NSColor.clear.cgColor
