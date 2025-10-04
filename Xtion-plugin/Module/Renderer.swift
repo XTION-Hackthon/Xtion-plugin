@@ -1,5 +1,5 @@
 //
-//  ScreenEffectRenderer.swift
+//  EffectRenderer.swift
 //  Xtion-plugin
 //
 //  Created by GH on 10/4/25.
@@ -7,7 +7,7 @@
 
 import MetalKit
 
-final class ScreenEffectRenderer: NSObject, MTKViewDelegate {
+final class EffectRenderer: NSObject, MTKViewDelegate {
     private let device: MTLDevice
     private let commandQueue: MTLCommandQueue
     private let pipelineState: MTLRenderPipelineState

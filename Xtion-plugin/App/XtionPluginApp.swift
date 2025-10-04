@@ -9,7 +9,7 @@ import SwiftUI
 
 @main
 struct XtionPluginApp: App {
-    @State private var screenEffect = ScreenEffectManager()
+    @State private var screenEffect = EffectManager()
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
     var body: some Scene {

@@ -10,10 +10,13 @@
 		1E030BCF2E9118E8004AC902 /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E030BCE2E9118E8004AC902 /* Renderer.swift */; };
 		1E030BD12E912511004AC902 /* EffectSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E030BD02E912511004AC902 /* EffectSession.swift */; };
 		1E030BD42E912545004AC902 /* Enumerate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E030BD32E912545004AC902 /* Enumerate.swift */; };
-		1E030BD62E91256D004AC902 /* ScreenEffectManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E030BD52E91256D004AC902 /* ScreenEffectManager.swift */; };
+		1E030BD62E91256D004AC902 /* EffectManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E030BD52E91256D004AC902 /* EffectManager.swift */; };
 		1E030BE02E91265C004AC902 /* Vertex.metal in Sources */ = {isa = PBXBuildFile; fileRef = 1E030BDF2E91265C004AC902 /* Vertex.metal */; };
 		1E030BE22E912662004AC902 /* GlitchWave.metal in Sources */ = {isa = PBXBuildFile; fileRef = 1E030BE12E912662004AC902 /* GlitchWave.metal */; };
 		1E030BE42E9126A4004AC902 /* Common.metal in Sources */ = {isa = PBXBuildFile; fileRef = 1E030BE32E9126A4004AC902 /* Common.metal */; };
+		1E030BE62E9127CE004AC902 /* HeartbeatGlow.metal in Sources */ = {isa = PBXBuildFile; fileRef = 1E030BE52E9127CE004AC902 /* HeartbeatGlow.metal */; };
+		1E030BE82E912980004AC902 /* SnowStatic.metal in Sources */ = {isa = PBXBuildFile; fileRef = 1E030BE72E912980004AC902 /* SnowStatic.metal */; };
+		1E030BEA2E9129E6004AC902 /* BlockGlitch.metal in Sources */ = {isa = PBXBuildFile; fileRef = 1E030BE92E9129E6004AC902 /* BlockGlitch.metal */; };
 		1E12D8D32E910D2C001119F6 /* ScreenCapturer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E12D8D22E910D2C001119F6 /* ScreenCapturer.swift */; };
 		1E359E6F2E8958AC00126BEF /* XtionPluginApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E359E6C2E8958AC00126BEF /* XtionPluginApp.swift */; };
 		1E359E702E8958AC00126BEF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1E359E6A2E8958AC00126BEF /* Assets.xcassets */; };
@@ -26,10 +29,13 @@
 		1E030BCE2E9118E8004AC902 /* Renderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Renderer.swift; sourceTree = "<group>"; };
 		1E030BD02E912511004AC902 /* EffectSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EffectSession.swift; sourceTree = "<group>"; };
 		1E030BD32E912545004AC902 /* Enumerate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Enumerate.swift; sourceTree = "<group>"; };
-		1E030BD52E91256D004AC902 /* ScreenEffectManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenEffectManager.swift; sourceTree = "<group>"; };
+		1E030BD52E91256D004AC902 /* EffectManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EffectManager.swift; sourceTree = "<group>"; };
 		1E030BDF2E91265C004AC902 /* Vertex.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Vertex.metal; sourceTree = "<group>"; };
 		1E030BE12E912662004AC902 /* GlitchWave.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = GlitchWave.metal; sourceTree = "<group>"; };
 		1E030BE32E9126A4004AC902 /* Common.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Common.metal; sourceTree = "<group>"; };
+		1E030BE52E9127CE004AC902 /* HeartbeatGlow.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = HeartbeatGlow.metal; sourceTree = "<group>"; };
+		1E030BE72E912980004AC902 /* SnowStatic.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = SnowStatic.metal; sourceTree = "<group>"; };
+		1E030BE92E9129E6004AC902 /* BlockGlitch.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = BlockGlitch.metal; sourceTree = "<group>"; };
 		1E12D8D22E910D2C001119F6 /* ScreenCapturer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenCapturer.swift; sourceTree = "<group>"; };
 		1E359E5C2E89569A00126BEF /* Xtion-plugin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Xtion-plugin.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		1E359E6A2E8958AC00126BEF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -64,7 +70,10 @@
 			children = (
 				1E030BE32E9126A4004AC902 /* Common.metal */,
 				1E030BDF2E91265C004AC902 /* Vertex.metal */,
+				1E030BE52E9127CE004AC902 /* HeartbeatGlow.metal */,
+				1E030BE72E912980004AC902 /* SnowStatic.metal */,
 				1E030BE12E912662004AC902 /* GlitchWave.metal */,
+				1E030BE92E9129E6004AC902 /* BlockGlitch.metal */,
 			);
 			path = EffectShader;
 			sourceTree = "<group>";
@@ -88,10 +97,10 @@
 		1E359E6D2E8958AC00126BEF /* Xtion-plugin */ = {
 			isa = PBXGroup;
 			children = (
-				1E030BD72E9125BB004AC902 /* EffectShader */,
-				1E030BD22E912536004AC902 /* Model */,
 				1E359E782E8959E400126BEF /* App */,
 				1E359E772E8959DA00126BEF /* Module */,
+				1E030BD72E9125BB004AC902 /* EffectShader */,
+				1E030BD22E912536004AC902 /* Model */,
 			);
 			path = "Xtion-plugin";
 			sourceTree = "<group>";
@@ -100,7 +109,7 @@
 			isa = PBXGroup;
 			children = (
 				1E359E752E8959BA00126BEF /* KeySpy.swift */,
-				1E030BD52E91256D004AC902 /* ScreenEffectManager.swift */,
+				1E030BD52E91256D004AC902 /* EffectManager.swift */,
 				1E030BD02E912511004AC902 /* EffectSession.swift */,
 				1E030BCE2E9118E8004AC902 /* Renderer.swift */,
 				1E12D8D22E910D2C001119F6 /* ScreenCapturer.swift */,
@@ -192,7 +201,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				1E030BD62E91256D004AC902 /* ScreenEffectManager.swift in Sources */,
+				1E030BD62E91256D004AC902 /* EffectManager.swift in Sources */,
 				1E030BCF2E9118E8004AC902 /* Renderer.swift in Sources */,
 				1E030BE02E91265C004AC902 /* Vertex.metal in Sources */,
 				1E359E842E895DCE00126BEF /* AudioController.swift in Sources */,
@@ -200,8 +209,11 @@
 				1E030BE42E9126A4004AC902 /* Common.metal in Sources */,
 				1E030BD12E912511004AC902 /* EffectSession.swift in Sources */,
 				1E359E6F2E8958AC00126BEF /* XtionPluginApp.swift in Sources */,
+				1E030BE62E9127CE004AC902 /* HeartbeatGlow.metal in Sources */,
 				1E359E762E8959BA00126BEF /* KeySpy.swift in Sources */,
+				1E030BE82E912980004AC902 /* SnowStatic.metal in Sources */,
 				1E030BE22E912662004AC902 /* GlitchWave.metal in Sources */,
+				1E030BEA2E9129E6004AC902 /* BlockGlitch.metal in Sources */,
 				1E030BD42E912545004AC902 /* Enumerate.swift in Sources */,
 				1E12D8D32E910D2C001119F6 /* ScreenCapturer.swift in Sources */,
 			);

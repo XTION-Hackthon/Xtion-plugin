@@ -13,7 +13,7 @@ final class EffectSession {
     // MARK: - Properties
     private let overlayWindow: NSWindow
     private let metalView: MTKView
-    private let renderer: ScreenEffectRenderer
+    private let renderer: EffectRenderer
     private let captureTask: Task<Void, Never>
     
     // MARK: - Initialization
@@ -35,7 +35,7 @@ final class EffectSession {
         overlayWindow.contentView = metalView
         
         let windowNumber = overlayWindow.windowNumber
-        renderer = try ScreenEffectRenderer(device: device, effect: effect, excludeWindowNumber: windowNumber)
+        renderer = try EffectRenderer(device: device, effect: effect, excludeWindowNumber: windowNumber)
         metalView.delegate = renderer
         
         overlayWindow.makeKeyAndOrderFront(nil)

@@ -1,5 +1,5 @@
 //
-//  ScreenEffectManager.swift
+//  EffectManager.swift
 //  Xtion-plugin
 //
 //  Created by GH on 10/4/25.
@@ -8,7 +8,7 @@
 import Foundation
 
 @MainActor
-final class ScreenEffectManager {
+final class EffectManager {
     private(set) var isActive = false
     private(set) var currentEffect: ScreenEffect?
     
