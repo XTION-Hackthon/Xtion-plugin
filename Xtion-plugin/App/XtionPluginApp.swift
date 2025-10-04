@@ -9,7 +9,7 @@ import SwiftUI
 
 @main
 struct XtionPluginApp: App {
-    @State private var screenEffectController = ScreenEffectController()
+    @State private var screenEffect = ScreenEffectManager()
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
     var body: some Scene {
@@ -18,22 +18,22 @@ struct XtionPluginApp: App {
             ForEach(ScreenEffect.allCases) { effect in
                 Button(effect.rawValue) {
                     Task {
-                        await screenEffectController.startEffect(effect)
+                        await screenEffect.start(effect)
                     }
                 }
-                .disabled(screenEffectController.isActive)
+                .disabled(screenEffect.isActive)
             }
             
             Button("停止扭曲") {
-                screenEffectController.stopEffect()
+                screenEffect.stop()
             }
-            .disabled(!screenEffectController.isActive)
+            .disabled(!screenEffect.isActive)
             
             Divider()
             
             Button("退出") {
                 // 确保退出前清理资源
-                screenEffectController.stopEffect()
+                screenEffect.stop()
                 NSApp.terminate(nil)
             }
         }
