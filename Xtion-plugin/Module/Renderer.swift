@@ -1,5 +1,5 @@
 //
-//  Renderer.swift
+//  ScreenEffectRenderer.swift
 //  Xtion-plugin
 //
 //  Created by GH on 10/4/25.
@@ -7,12 +7,12 @@
 
 import MetalKit
 
-final class Renderer: NSObject, MTKViewDelegate {
+final class ScreenEffectRenderer: NSObject, MTKViewDelegate {
     private let device: MTLDevice
     private let commandQueue: MTLCommandQueue
     private let pipelineState: MTLRenderPipelineState
     private let captureManager: ScreenCapturer
-    private let effect: DistortionEffect
+    private let effect: ScreenEffect
     private let vertexBuffer: MTLBuffer
     
     private var startTime: CFTimeInterval = CACurrentMediaTime()
@@ -25,18 +25,18 @@ final class Renderer: NSObject, MTKViewDelegate {
          1.0,  1.0, 1.0, 0.0
     ]
     
-    init(device: MTLDevice, effect: DistortionEffect, excludeWindowNumber: Int) throws {
+    init(device: MTLDevice, effect: ScreenEffect, excludeWindowNumber: Int) throws {
         self.device = device
         self.effect = effect
         
         guard let commandQueue = device.makeCommandQueue() else {
-            throw DistortionError.metalSetupFailed
+            throw ScreenEffectError.metalSetupFailed
         }
         self.commandQueue = commandQueue
         
         let verticesSize = Self.vertices.count * MemoryLayout<Float>.stride
         guard let buffer = device.makeBuffer(bytes: Self.vertices, length: verticesSize, options: []) else {
-            throw DistortionError.metalSetupFailed
+            throw ScreenEffectError.metalSetupFailed
         }
         self.vertexBuffer = buffer
         
@@ -69,7 +69,6 @@ final class Renderer: NSObject, MTKViewDelegate {
             renderEncoder.setFragmentTexture(texture, index: 0)
         }
         
-        // 简化:直接在 draw 时计算时间
         var timeValue = Float(CACurrentMediaTime() - startTime)
         renderEncoder.setFragmentBytes(&timeValue, length: MemoryLayout<Float>.size, index: 0)
         
@@ -80,11 +79,11 @@ final class Renderer: NSObject, MTKViewDelegate {
         commandBuffer.commit()
     }
     
-    private static func createPipelineState(device: MTLDevice, effect: DistortionEffect) throws -> MTLRenderPipelineState {
+    private static func createPipelineState(device: MTLDevice, effect: ScreenEffect) throws -> MTLRenderPipelineState {
         guard let library = device.makeDefaultLibrary(),
               let vertexFunction = library.makeFunction(name: "vertex_main"),
               let fragmentFunction = library.makeFunction(name: effect.fragmentFunctionName) else {
-            throw DistortionError.shaderNotFound
+            throw ScreenEffectError.shaderNotFound
         }
         
         let pipelineDescriptor = MTLRenderPipelineDescriptor()

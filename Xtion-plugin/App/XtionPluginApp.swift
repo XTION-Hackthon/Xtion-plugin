@@ -9,31 +9,31 @@ import SwiftUI
 
 @main
 struct XtionPluginApp: App {
-    @State private var distortionController = DistortionController()
+    @State private var screenEffectController = ScreenEffectController()
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
     var body: some Scene {
         MenuBarExtra("Xtion", systemImage: "waveform") {
             // 为每个特效创建菜单项
-            ForEach(DistortionEffect.allCases) { effect in
+            ForEach(ScreenEffect.allCases) { effect in
                 Button(effect.rawValue) {
                     Task {
-                        await distortionController.startDistortion(effect: effect)
+                        await screenEffectController.startEffect(effect)
                     }
                 }
-                .disabled(distortionController.isActive)
+                .disabled(screenEffectController.isActive)
             }
             
             Button("停止扭曲") {
-                distortionController.stopDistortion()
+                screenEffectController.stopEffect()
             }
-            .disabled(!distortionController.isActive)
+            .disabled(!screenEffectController.isActive)
             
             Divider()
             
             Button("退出") {
                 // 确保退出前清理资源
-                distortionController.stopDistortion()
+                screenEffectController.stopEffect()
                 NSApp.terminate(nil)
             }
         }

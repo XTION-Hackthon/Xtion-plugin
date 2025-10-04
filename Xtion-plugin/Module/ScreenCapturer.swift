@@ -14,7 +14,6 @@ actor ScreenCapturer {
     private let excludeWindowNumber: Int
     private let textureCache: CVMetalTextureCache?
     
-    // 缓存配置和过滤器，避免每帧重建
     private var cachedContentFilter: SCContentFilter?
     private var cachedConfiguration: SCStreamConfiguration?
     
@@ -29,6 +28,7 @@ actor ScreenCapturer {
         Task { await prepareCapture() }
     }
     
+    /// 准备并缓存屏幕捕获配置
     private func prepareCapture() async {
         guard let content = try? await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true),
               let display = content.displays.first else { return }
@@ -49,24 +49,14 @@ actor ScreenCapturer {
         self.cachedConfiguration = configuration
     }
     
+    /// 纹理流 - 尽可能快地捕获屏幕内容
     var textureStream: AsyncStream<MTLTexture> {
         AsyncStream { continuation in
             let task = Task {
-                // 自适应帧率控制
-                var lastCaptureTime = CACurrentMediaTime()
-                let targetFrameTime: Double = 1.0 / 120.0
-
                 while !Task.isCancelled {
-                    let startTime = CACurrentMediaTime()
-                    
                     if let texture = await captureScreenTexture() {
                         continuation.yield(texture)
                     }
-                    
-                    let captureTime = CACurrentMediaTime() - startTime
-                    let sleepTime = max(0, targetFrameTime - captureTime)
-                                        
-                    lastCaptureTime = CACurrentMediaTime()
                 }
                 continuation.finish()
             }
@@ -77,6 +67,7 @@ actor ScreenCapturer {
         }
     }
     
+    /// 捕获屏幕并转换为 Metal 纹理
     private func captureScreenTexture() async -> MTLTexture? {
         guard let contentFilter = cachedContentFilter,
               let configuration = cachedConfiguration else {
@@ -92,6 +83,7 @@ actor ScreenCapturer {
         return createTexture(from: image)
     }
     
+    /// 使用 CVMetalTextureCache 从 CGImage 直接创建 Metal 纹理
     private func createTexture(from cgImage: CGImage) -> MTLTexture? {
         guard let textureCache = textureCache else { return nil }
         

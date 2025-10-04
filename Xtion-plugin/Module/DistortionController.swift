@@ -1,12 +1,12 @@
 //
-//  DistortionController.swift
+//  ScreenEffectController.swift
 //
 
 import MetalKit
 import ScreenCaptureKit
 
-/// 可用的屏幕扭曲特效类型
-enum DistortionEffect: String, CaseIterable, Identifiable {
+/// 可用的屏幕特效类型
+enum ScreenEffect: String, CaseIterable, Identifiable {
     case glitchWave = "故障波浪"
     var id: String { rawValue }
     
@@ -19,22 +19,22 @@ enum DistortionEffect: String, CaseIterable, Identifiable {
 }
 
 @MainActor
-class DistortionController {
+final class ScreenEffectController {
     private(set) var isActive = false
-    private(set) var currentEffect: DistortionEffect?
+    private(set) var currentEffect: ScreenEffect?
     
-    private var distortionSession: DistortionSession?
+    private var effectSession: ScreenEffectSession?
     private var autoStopTask: Task<Void, Never>?
     
-    /// 启动指定的扭曲特效
+    /// 启动指定的屏幕特效
     /// - Parameters:
     ///   - effect: 要启动的特效类型
     ///   - duration: 特效持续时间(秒),nil 表示不自动停止
-    func startDistortion(effect: DistortionEffect, duration: TimeInterval? = 3) async {
+    func startEffect(_ effect: ScreenEffect, duration: TimeInterval? = 3) async {
         guard !isActive else { return }
         
-        guard let session = try? await DistortionSession(effect: effect) else { return }
-        distortionSession = session
+        guard let session = try? await ScreenEffectSession(effect: effect) else { return }
+        effectSession = session
         currentEffect = effect
         isActive = true
         
@@ -42,56 +42,42 @@ class DistortionController {
             autoStopTask = Task {
                 try? await Task.sleep(for: .seconds(duration))
                 if !Task.isCancelled {
-                    stopDistortion()
+                    stopEffect()
                 }
             }
         }
     }
     
-    func stopDistortion() {
+    func stopEffect() {
         guard isActive else { return }
         
         autoStopTask?.cancel()
         autoStopTask = nil
-        distortionSession = nil
+        effectSession = nil
         currentEffect = nil
         isActive = false
     }
 }
 
 @MainActor
-class DistortionSession {
-    // MARK: - Constants
-    private enum Constants {
-        static let pixelFormat: MTLPixelFormat = .bgra8Unorm
-        
-        /// 根据屏幕能力返回最佳帧率
-        static func preferredFPS(for screen: NSScreen) -> Int {
-            // 检测是否支持 ProMotion (120Hz+)
-            if screen.maximumFramesPerSecond >= 120 {
-                return 120
-            }
-            return 60
-        }
-    }
-    
+final class ScreenEffectSession {
     // MARK: - Properties
     private let overlayWindow: NSWindow
     private let metalView: MTKView
-    private let renderer: Renderer
+    private let renderer: ScreenEffectRenderer
     private let captureTask: Task<Void, Never>
     
     // MARK: - Initialization
-    init(effect: DistortionEffect) async throws {
-        // 请求屏幕捕获权限 (即使不直接使用结果,也能触发权限请求)
+    init(effect: ScreenEffect) async throws {
+        // 请求屏幕捕获权限
         _ = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
         
         guard let screen = NSScreen.main else {
-            throw DistortionError.noScreenAvailable
+            throw ScreenEffectError.noScreenAvailable
         }
         
         guard let device = MTLCreateSystemDefaultDevice() else {
-            throw DistortionError.metalNotAvailable
+            throw ScreenEffectError.metalNotAvailable
         }
         
         // 初始化组件
@@ -100,7 +86,7 @@ class DistortionSession {
         overlayWindow.contentView = metalView
         
         let windowNumber = overlayWindow.windowNumber
-        renderer = try Renderer(device: device, effect: effect, excludeWindowNumber: windowNumber)
+        renderer = try ScreenEffectRenderer(device: device, effect: effect, excludeWindowNumber: windowNumber)
         metalView.delegate = renderer
         
         overlayWindow.makeKeyAndOrderFront(nil)
@@ -139,9 +125,12 @@ class DistortionSession {
     private static func createMetalView(for screen: NSScreen, device: MTLDevice) -> MTKView {
         let metalView = MTKView(frame: screen.frame)
         metalView.device = device
-        metalView.colorPixelFormat = Constants.pixelFormat
+        metalView.colorPixelFormat = .bgra8Unorm
         metalView.framebufferOnly = false
-        metalView.preferredFramesPerSecond = Constants.preferredFPS(for: screen)
+        
+        // 根据屏幕能力设置帧率
+        metalView.preferredFramesPerSecond = screen.maximumFramesPerSecond >= 120 ? 120 : 60
+        
         metalView.wantsLayer = true
         metalView.layer?.isOpaque = false
         metalView.layer?.backgroundColor = NSColor.clear.cgColor
@@ -150,7 +139,7 @@ class DistortionSession {
     }
 }
 
-enum DistortionError: Error, LocalizedError {
+enum ScreenEffectError: Error, LocalizedError {
     case noScreenAvailable
     case metalNotAvailable
     case metalSetupFailed
