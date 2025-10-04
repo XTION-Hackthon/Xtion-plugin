@@ -8,29 +8,46 @@ import MetalKit
 import QuartzCore
 import ScreenCaptureKit
 
-@Observable @MainActor
-final class DistortionController {
+/// 可用的屏幕扭曲特效类型
+enum DistortionEffect: String, CaseIterable, Identifiable {
+    case glitchWave = "故障波浪"
+    var id: String { rawValue }
+    
+    /// 对应的 Metal fragment 函数名
+    var fragmentFunctionName: String {
+        switch self {
+        case .glitchWave: return "fragment_glitch_wave"
+        }
+    }
+}
+
+@MainActor
+class DistortionController {
     private(set) var isActive = false
+    private(set) var currentEffect: DistortionEffect?
     
     private var distortionSession: DistortionSession?
     private var autoStopTask: Task<Void, Never>?
     
-    func startDistortion() async {
+    /// 启动指定的扭曲特效
+    /// - Parameters:
+    ///   - effect: 要启动的特效类型
+    ///   - duration: 特效持续时间(秒),nil 表示不自动停止
+    func startDistortion(effect: DistortionEffect, duration: TimeInterval? = 3) async {
         guard !isActive else { return }
         
-        do {
-            let session = try await DistortionSession()
-            distortionSession = session
-            isActive = true
-            
+        guard let session = try? await DistortionSession(effect: effect) else { return }
+        distortionSession = session
+        currentEffect = effect
+        isActive = true
+        
+        if let duration = duration {
             autoStopTask = Task {
-                try? await Task.sleep(for: .seconds(3))
+                try? await Task.sleep(for: .seconds(duration))
                 if !Task.isCancelled {
                     stopDistortion()
                 }
             }
-        } catch {
-            // Handle error silently or use structured logging
         }
     }
     
@@ -40,18 +57,19 @@ final class DistortionController {
         autoStopTask?.cancel()
         autoStopTask = nil
         distortionSession = nil
+        currentEffect = nil
         isActive = false
     }
 }
 
 @MainActor
-private final class DistortionSession {
+class DistortionSession {
     private let overlayWindow: NSWindow
     private let metalView: MTKView
     private let renderer: DistortionRenderer
-    private let renderTask: Task<Void, Never>
+    private let captureTask: Task<Void, Never>
     
-    init() async throws {
+    init(effect: DistortionEffect) async throws {
         _ = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
         
         guard let screen = NSScreen.main else {
@@ -66,35 +84,21 @@ private final class DistortionSession {
         metalView = Self.createMetalView(for: screen, device: device)
         overlayWindow.contentView = metalView
         
-        renderer = try DistortionRenderer(device: device, excludeWindow: overlayWindow)
+        let windowNumber = overlayWindow.windowNumber
+        renderer = try DistortionRenderer(device: device, effect: effect, excludeWindowNumber: windowNumber)
         metalView.delegate = renderer
         
         overlayWindow.makeKeyAndOrderFront(nil)
         
+        // 简化:只需要一个 Task 用于屏幕捕获
         let renderer = self.renderer
-        let metalView = self.metalView
-        
-        renderTask = Task {
-            await withTaskGroup(of: Void.self) { group in
-                group.addTask {
-                    while !Task.isCancelled {
-                        await renderer.updateTime()
-                        await MainActor.run {
-                            metalView.needsDisplay = true
-                        }
-                        try? await Task.sleep(for: .milliseconds(16))
-                    }
-                }
-                
-                group.addTask {
-                    await renderer.startCapturing()
-                }
-            }
+        captureTask = Task {
+            await renderer.startCapturing()
         }
     }
     
     deinit {
-        renderTask.cancel()
+        captureTask.cancel()
         overlayWindow.orderOut(nil)
     }
     
@@ -130,13 +134,14 @@ private final class DistortionSession {
     }
 }
 
-private final class DistortionRenderer: NSObject, MTKViewDelegate {
+class DistortionRenderer: NSObject, MTKViewDelegate {
     private let device: MTLDevice
     private let commandQueue: MTLCommandQueue
     private let pipelineState: MTLRenderPipelineState
-    private let captureManager: ScreenCaptureManager
+    private let captureManager: ScreenCapturer
+    private let effect: DistortionEffect
     
-    private var time: Float = 0
+    private var startTime: CFTimeInterval = CACurrentMediaTime()
     private var screenTexture: MTLTexture?
     
     private let vertices: [Float] = [
@@ -146,22 +151,19 @@ private final class DistortionRenderer: NSObject, MTKViewDelegate {
          1.0,  1.0, 1.0, 0.0
     ]
     
-    init(device: MTLDevice, excludeWindow: NSWindow) throws {
+    init(device: MTLDevice, effect: DistortionEffect, excludeWindowNumber: Int) throws {
         self.device = device
+        self.effect = effect
         
         guard let commandQueue = device.makeCommandQueue() else {
             throw DistortionError.metalSetupFailed
         }
         self.commandQueue = commandQueue
         
-        self.pipelineState = try Self.createPipelineState(device: device)
-        self.captureManager = ScreenCaptureManager(device: device, excludeWindow: excludeWindow)
+        self.pipelineState = try Self.createPipelineState(device: device, effect: effect)
+        self.captureManager = ScreenCapturer(device: device, excludeWindowNumber: excludeWindowNumber)
         
         super.init()
-    }
-    
-    func updateTime() async {
-        time += 1.0 / 60.0
     }
     
     func startCapturing() async {
@@ -187,7 +189,8 @@ private final class DistortionRenderer: NSObject, MTKViewDelegate {
             renderEncoder.setFragmentTexture(texture, index: 0)
         }
         
-        var timeValue = time
+        // 简化:直接在 draw 时计算时间
+        var timeValue = Float(CACurrentMediaTime() - startTime)
         renderEncoder.setFragmentBytes(&timeValue, length: MemoryLayout<Float>.size, index: 0)
         
         renderEncoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
@@ -197,10 +200,10 @@ private final class DistortionRenderer: NSObject, MTKViewDelegate {
         commandBuffer.commit()
     }
     
-    private static func createPipelineState(device: MTLDevice) throws -> MTLRenderPipelineState {
+    private static func createPipelineState(device: MTLDevice, effect: DistortionEffect) throws -> MTLRenderPipelineState {
         guard let library = device.makeDefaultLibrary(),
               let vertexFunction = library.makeFunction(name: "vertex_main"),
-              let fragmentFunction = library.makeFunction(name: "fragment_main") else {
+              let fragmentFunction = library.makeFunction(name: effect.fragmentFunctionName) else {
             throw DistortionError.shaderNotFound
         }
         
@@ -216,68 +219,7 @@ private final class DistortionRenderer: NSObject, MTKViewDelegate {
     }
 }
 
-private actor ScreenCaptureManager {
-    private let device: MTLDevice
-    private let excludeWindow: NSWindow
-    private let textureLoader: MTKTextureLoader
-    
-    init(device: MTLDevice, excludeWindow: NSWindow) {
-        self.device = device
-        self.excludeWindow = excludeWindow
-        self.textureLoader = MTKTextureLoader(device: device)
-    }
-    
-    var textureStream: AsyncStream<MTLTexture> {
-        AsyncStream { continuation in
-            let task = Task {
-                while !Task.isCancelled {
-                    if let texture = await captureScreenTexture() {
-                        continuation.yield(texture)
-                    }
-                    try? await Task.sleep(for: .milliseconds(16))
-                }
-                continuation.finish()
-            }
-            
-            continuation.onTermination = { _ in
-                task.cancel()
-            }
-        }
-    }
-    
-    @MainActor
-    private func captureScreenTexture() async -> MTLTexture? {
-        do {
-            let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
-            guard let display = content.displays.first else { return nil }
-            
-            let configuration = SCStreamConfiguration()
-            configuration.width = Int(display.width)
-            configuration.height = Int(display.height)
-            configuration.scalesToFit = false
-            
-            let excludeWindows = content.windows.filter { window in
-                Int(window.windowID) == excludeWindow.windowNumber
-            }
-            
-            let contentFilter = SCContentFilter(display: display, excludingWindows: excludeWindows)
-            let image = try await SCScreenshotManager.captureImage(
-                contentFilter: contentFilter,
-                configuration: configuration
-            )
-            
-            return try await textureLoader.newTexture(cgImage: image, options: [
-                .textureUsage: MTLTextureUsage.shaderRead.rawValue,
-                .textureStorageMode: MTLStorageMode.private.rawValue
-            ])
-            
-        } catch {
-            return nil
-        }
-    }
-}
-
-private enum DistortionError: Error, LocalizedError {
+enum DistortionError: Error, LocalizedError {
     case noScreenAvailable
     case metalNotAvailable
     case metalSetupFailed

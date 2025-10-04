@@ -14,12 +14,15 @@ struct XtionPluginApp: App {
     
     var body: some Scene {
         MenuBarExtra("Xtion", systemImage: "waveform") {
-            Button("开始扭曲") {
-                Task {
-                    await distortionController.startDistortion()
+            // 为每个特效创建菜单项
+            ForEach(DistortionEffect.allCases) { effect in
+                Button(effect.rawValue) {
+                    Task {
+                        await distortionController.startDistortion(effect: effect)
+                    }
                 }
+                .disabled(distortionController.isActive)
             }
-            .disabled(distortionController.isActive)
             
             Button("停止扭曲") {
                 distortionController.stopDistortion()

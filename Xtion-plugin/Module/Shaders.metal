@@ -33,9 +33,13 @@ vertex VertexOut vertex_main(uint vertexID [[vertex_id]],
     return out;
 }
 
-fragment float4 fragment_main(VertexOut in [[stage_in]],
-                              texture2d<float> screenTexture [[texture(0)]],
-                              constant float& time [[buffer(0)]]) {
+// ============================================================================
+// 特效 1: 故障波浪 (Glitch Wave)
+// 结合波浪扭曲、白色花屏和屏幕闪烁的诡异效果
+// ============================================================================
+fragment float4 fragment_glitch_wave(VertexOut in [[stage_in]],
+                                     texture2d<float> screenTexture [[texture(0)]],
+                                     constant float& time [[buffer(0)]]) {
     constexpr sampler textureSampler(mag_filter::linear, min_filter::linear, address::clamp_to_edge);
     
     float2 uv = in.texCoord;
