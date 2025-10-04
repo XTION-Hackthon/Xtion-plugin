@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1E030BCF2E9118E8004AC902 /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E030BCE2E9118E8004AC902 /* Renderer.swift */; };
 		1E12D8D32E910D2C001119F6 /* ScreenCapturer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E12D8D22E910D2C001119F6 /* ScreenCapturer.swift */; };
 		1E359E6F2E8958AC00126BEF /* XtionPluginApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E359E6C2E8958AC00126BEF /* XtionPluginApp.swift */; };
 		1E359E702E8958AC00126BEF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1E359E6A2E8958AC00126BEF /* Assets.xcassets */; };
@@ -18,6 +19,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		1E030BCE2E9118E8004AC902 /* Renderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Renderer.swift; sourceTree = "<group>"; };
 		1E12D8D22E910D2C001119F6 /* ScreenCapturer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenCapturer.swift; sourceTree = "<group>"; };
 		1E359E5C2E89569A00126BEF /* Xtion-plugin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Xtion-plugin.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		1E359E6A2E8958AC00126BEF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -71,6 +73,7 @@
 			children = (
 				1E359E752E8959BA00126BEF /* KeySpy.swift */,
 				1E48A9B32E8ABF51005B14CB /* DistortionController.swift */,
+				1E030BCE2E9118E8004AC902 /* Renderer.swift */,
 				1E12D8D22E910D2C001119F6 /* ScreenCapturer.swift */,
 				1EEAAD212E8AC3AF00D74619 /* Shaders.metal */,
 				1E359E832E895DCE00126BEF /* AudioController.swift */,
@@ -161,6 +164,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1E030BCF2E9118E8004AC902 /* Renderer.swift in Sources */,
 				1EEAAD222E8AC3AF00D74619 /* Shaders.metal in Sources */,
 				1E359E842E895DCE00126BEF /* AudioController.swift in Sources */,
 				1E359E7A2E8959F600126BEF /* AppDelegate.swift in Sources */,

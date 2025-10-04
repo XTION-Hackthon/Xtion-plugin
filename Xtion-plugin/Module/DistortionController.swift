@@ -2,10 +2,7 @@
 //  DistortionController.swift
 //
 
-import Metal
-import SwiftUI
 import MetalKit
-import QuartzCore
 import ScreenCaptureKit
 
 /// 可用的屏幕扭曲特效类型
@@ -66,7 +63,7 @@ class DistortionController {
 class DistortionSession {
     private let overlayWindow: NSWindow
     private let metalView: MTKView
-    private let renderer: DistortionRenderer
+    private let renderer: Renderer
     private let captureTask: Task<Void, Never>
     
     init(effect: DistortionEffect) async throws {
@@ -85,7 +82,7 @@ class DistortionSession {
         overlayWindow.contentView = metalView
         
         let windowNumber = overlayWindow.windowNumber
-        renderer = try DistortionRenderer(device: device, effect: effect, excludeWindowNumber: windowNumber)
+        renderer = try Renderer(device: device, effect: effect, excludeWindowNumber: windowNumber)
         metalView.delegate = renderer
         
         overlayWindow.makeKeyAndOrderFront(nil)
@@ -131,91 +128,6 @@ class DistortionSession {
         metalView.layer?.backgroundColor = NSColor.clear.cgColor
         
         return metalView
-    }
-}
-
-class DistortionRenderer: NSObject, MTKViewDelegate {
-    private let device: MTLDevice
-    private let commandQueue: MTLCommandQueue
-    private let pipelineState: MTLRenderPipelineState
-    private let captureManager: ScreenCapturer
-    private let effect: DistortionEffect
-    
-    private var startTime: CFTimeInterval = CACurrentMediaTime()
-    private var screenTexture: MTLTexture?
-    
-    private let vertices: [Float] = [
-        -1.0, -1.0, 0.0, 1.0,
-         1.0, -1.0, 1.0, 1.0,
-        -1.0,  1.0, 0.0, 0.0,
-         1.0,  1.0, 1.0, 0.0
-    ]
-    
-    init(device: MTLDevice, effect: DistortionEffect, excludeWindowNumber: Int) throws {
-        self.device = device
-        self.effect = effect
-        
-        guard let commandQueue = device.makeCommandQueue() else {
-            throw DistortionError.metalSetupFailed
-        }
-        self.commandQueue = commandQueue
-        
-        self.pipelineState = try Self.createPipelineState(device: device, effect: effect)
-        self.captureManager = ScreenCapturer(device: device, excludeWindowNumber: excludeWindowNumber)
-        
-        super.init()
-    }
-    
-    func startCapturing() async {
-        for await texture in await captureManager.textureStream {
-            screenTexture = texture
-        }
-    }
-    
-    func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
-    
-    func draw(in view: MTKView) {
-        guard let drawable = view.currentDrawable,
-              let renderPassDescriptor = view.currentRenderPassDescriptor,
-              let commandBuffer = commandQueue.makeCommandBuffer(),
-              let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {
-            return
-        }
-        
-        renderEncoder.setRenderPipelineState(pipelineState)
-        renderEncoder.setVertexBytes(vertices, length: vertices.count * MemoryLayout<Float>.size, index: 0)
-        
-        if let texture = screenTexture {
-            renderEncoder.setFragmentTexture(texture, index: 0)
-        }
-        
-        // 简化:直接在 draw 时计算时间
-        var timeValue = Float(CACurrentMediaTime() - startTime)
-        renderEncoder.setFragmentBytes(&timeValue, length: MemoryLayout<Float>.size, index: 0)
-        
-        renderEncoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
-        renderEncoder.endEncoding()
-        
-        commandBuffer.present(drawable)
-        commandBuffer.commit()
-    }
-    
-    private static func createPipelineState(device: MTLDevice, effect: DistortionEffect) throws -> MTLRenderPipelineState {
-        guard let library = device.makeDefaultLibrary(),
-              let vertexFunction = library.makeFunction(name: "vertex_main"),
-              let fragmentFunction = library.makeFunction(name: effect.fragmentFunctionName) else {
-            throw DistortionError.shaderNotFound
-        }
-        
-        let pipelineDescriptor = MTLRenderPipelineDescriptor()
-        pipelineDescriptor.vertexFunction = vertexFunction
-        pipelineDescriptor.fragmentFunction = fragmentFunction
-        pipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
-        pipelineDescriptor.colorAttachments[0].isBlendingEnabled = true
-        pipelineDescriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
-        pipelineDescriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
-        
-        return try device.makeRenderPipelineState(descriptor: pipelineDescriptor)
     }
 }
 
