@@ -23,6 +23,7 @@
 		1E359E762E8959BA00126BEF /* KeySpy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E359E752E8959BA00126BEF /* KeySpy.swift */; };
 		1E359E7A2E8959F600126BEF /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E359E792E8959F600126BEF /* AppDelegate.swift */; };
 		1E359E842E895DCE00126BEF /* AudioController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E359E832E895DCE00126BEF /* AudioController.swift */; };
+		1E3C24272E9C0822003F8B0F /* Clipboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E3C24262E9C0822003F8B0F /* Clipboard.swift */; };
 		2BC6A98A2E95546600442F65 /* test.GIF in Resources */ = {isa = PBXBuildFile; fileRef = 2BC6A9882E954E1200442F65 /* test.GIF */; };
 		2BC6A98C2E95554E00442F65 /* 212.GIF in Resources */ = {isa = PBXBuildFile; fileRef = 2BC6A98B2E95554E00442F65 /* 212.GIF */; };
 		2BC6A98E2E95559700442F65 /* halloween.gif in Resources */ = {isa = PBXBuildFile; fileRef = 2BC6A98D2E95559700442F65 /* halloween.gif */; };
@@ -49,6 +50,7 @@
 		1E359E752E8959BA00126BEF /* KeySpy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeySpy.swift; sourceTree = "<group>"; };
 		1E359E792E8959F600126BEF /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		1E359E832E895DCE00126BEF /* AudioController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioController.swift; sourceTree = "<group>"; };
+		1E3C24262E9C0822003F8B0F /* Clipboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Clipboard.swift; sourceTree = "<group>"; };
 		1EA310D32E8ABCB000336263 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		2BC6A9882E954E1200442F65 /* test.GIF */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = test.GIF; sourceTree = "<group>"; };
 		2BC6A98B2E95554E00442F65 /* 212.GIF */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = 212.GIF; sourceTree = "<group>"; };
@@ -127,6 +129,7 @@
 				1E030BD52E91256D004AC902 /* EffectManager.swift */,
 				1E030BD02E912511004AC902 /* EffectSession.swift */,
 				1E030BCE2E9118E8004AC902 /* Renderer.swift */,
+				1E3C24262E9C0822003F8B0F /* Clipboard.swift */,
 				1E12D8D22E910D2C001119F6 /* ScreenCapturer.swift */,
 				1E359E832E895DCE00126BEF /* AudioController.swift */,
 			);
@@ -241,6 +244,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1E030BD62E91256D004AC902 /* EffectManager.swift in Sources */,
+				1E3C24272E9C0822003F8B0F /* Clipboard.swift in Sources */,
 				1E030BCF2E9118E8004AC902 /* Renderer.swift in Sources */,
 				1E030BE02E91265C004AC902 /* Vertex.metal in Sources */,
 				1E359E842E895DCE00126BEF /* AudioController.swift in Sources */,

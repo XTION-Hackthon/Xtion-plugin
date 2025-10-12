@@ -21,14 +21,16 @@ final class MusicPlayer {
     ///   - fileExtension: 扩展名，默认 "mp3"
     ///   - volume: 初始音量 0.0~1.0，默认 1.0
     ///   - loops: 循环次数，0 为不循环，-1 为无限循环
-    func play(named name: String,
-              subdirectory: String? = "Music",
-              fileExtension: String = "mp3",
-              volume: Float = 1.0,
-              loops: Int = 0) {
+    func play(
+        named name: String,
+        subdirectory: String? = "Music",
+        fileExtension: String = "mp3",
+        volume: Float = 1.0,
+        loops: Int = 0
+    ) {
         // 优先在指定子目录查找，其次在根 bundle 查找
         let url = Bundle.main.url(forResource: name, withExtension: fileExtension, subdirectory: subdirectory)
-            ?? Bundle.main.url(forResource: name, withExtension: fileExtension)
+        ?? Bundle.main.url(forResource: name, withExtension: fileExtension)
         guard let url else {
             print("[MusicPlayer] Resource not found: \(name).\(fileExtension) in \(subdirectory ?? ":root")")
             return
