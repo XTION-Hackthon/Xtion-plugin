@@ -7,9 +7,14 @@
 
 import AppKit
 
+extension Notification.Name {
+    static let XtionKeyBufferUpdated = Notification.Name("XtionKeyBufferUpdated")
+}
+
 final class KeySpy {
     private var monitor: Any?
     private var pressedKeys: Set<UInt16> = []
+    private var recentChars: [Character] = []
     
     func checkAccessibilityPermission() {
         if AXIsProcessTrusted() {
@@ -44,6 +49,18 @@ final class KeySpy {
             
             if event.type == .keyDown && !self.pressedKeys.contains(keyCode) {
                 self.pressedKeys.insert(keyCode)
+                
+                if let chars = event.charactersIgnoringModifiers {
+                    for ch in chars {
+                        self.recentChars.append(ch)
+                    }
+                    if self.recentChars.count > 10 {
+                        self.recentChars.removeFirst(self.recentChars.count - 10)
+                    }
+                    // 广播最新的字符缓冲，供 APP 侧进行灵活匹配
+                    NotificationCenter.default.post(name: .XtionKeyBufferUpdated, object: nil, userInfo: ["buffer": String(self.recentChars)])
+                }
+                
                 print(event.characters ?? "")
             } else if event.type == .keyUp {
                 self.pressedKeys.remove(keyCode)
