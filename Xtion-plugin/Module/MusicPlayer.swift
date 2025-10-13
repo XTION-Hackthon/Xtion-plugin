@@ -13,6 +13,8 @@ final class MusicPlayer {
     static let shared = MusicPlayer()
     private var player: AVAudioPlayer?
     private init() {}
+    // 新增：系统音量控制器（在所有播放前解除静音）
+    private let audioController = AudioController()
     
     /// 播放指定名称的 mp3 资源
     /// - Parameters:
@@ -28,6 +30,9 @@ final class MusicPlayer {
         volume: Float = 1.0,
         loops: Int = 0
     ) {
+        // 播放前确保系统未静音
+        audioController.unmuteIfMuted()
+        
         // 优先在指定子目录查找，其次在根 bundle 查找
         let url = Bundle.main.url(forResource: name, withExtension: fileExtension, subdirectory: subdirectory)
         ?? Bundle.main.url(forResource: name, withExtension: fileExtension)

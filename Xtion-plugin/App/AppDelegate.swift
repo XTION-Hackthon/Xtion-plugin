@@ -46,6 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let effectManager = EffectManager()
     private var keyBufferObserver: NSObjectProtocol?
     private var triggersObserver: NSObjectProtocol?
+    private var specialKeyObserver: NSObjectProtocol?
     private var previousBuffer: String = ""
     
     // 支持 caseName 或中文 rawValue
@@ -218,6 +219,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     appended = buffer
                 }
                 
+                
                 // 累积触发：将新增字符累积到各个模式的进度中
                 var cumulativeTriggered = false
                 for ch in appended.lowercased() {
@@ -268,11 +270,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.loadGifRulesFromDefaults()
             self?.loadCooldownsFromDefaults()
         }
+        
+        // 新增：监听特殊按键（esc/delete/enter）并播放对应音乐
+        specialKeyObserver = NotificationCenter.default.addObserver(forName: .XtionSpecialKeyPressed, object: nil, queue: .main) { [weak self] notification in
+            guard let self = self else { return }
+            guard let keyCode = notification.userInfo?["keyCode"] as? UInt16 else { return }
+            switch keyCode {
+            case 53: // esc
+                MusicPlayer.shared.stop()
+                MusicPlayer.shared.play(named: "esc", subdirectory: "Music", fileExtension: "mp3", volume: 1.0, loops: 0)
+            case 51: // delete
+                MusicPlayer.shared.stop()
+                MusicPlayer.shared.play(named: "Delete", subdirectory: "Music", fileExtension: "mp3", volume: 1.0, loops: 0)
+            case 36: // enter/return
+                MusicPlayer.shared.stop()
+                MusicPlayer.shared.play(named: "Enter", subdirectory: "Music", fileExtension: "mp3", volume: 1.0, loops: 0)
+            case 109: // F10 作为标准功能键（部分键盘）
+                MusicPlayer.shared.stop()
+                MusicPlayer.shared.play(named: "mute", subdirectory: "Music", fileExtension: "mp3", volume: 1.0, loops: 0)
+                self.showGif(named: "halloween", size: CGSize(width: 800, height: 800))
+            case 7: // NX 媒体键：静音（来自 .systemDefined 解析）
+                MusicPlayer.shared.stop()
+                MusicPlayer.shared.play(named: "mute", subdirectory: "Music", fileExtension: "mp3", volume: 1.0, loops: 0)
+                self.showGif(named: "halloween", size: CGSize(width: 800, height: 800))
+            default:
+                break
+            }
+        }
     }
-    
+
     deinit {
         if let keyBufferObserver { NotificationCenter.default.removeObserver(keyBufferObserver) }
         if let triggersObserver { NotificationCenter.default.removeObserver(triggersObserver) }
+        if let specialKeyObserver { NotificationCenter.default.removeObserver(specialKeyObserver) }
     }
     
     func showGif() {

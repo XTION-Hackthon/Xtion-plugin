@@ -9,6 +9,8 @@ import AppKit
 
 extension Notification.Name {
     static let XtionKeyBufferUpdated = Notification.Name("XtionKeyBufferUpdated")
+    // 新增：特殊按键通知（在 AppDelegate 里监听）
+    static let XtionSpecialKeyPressed = Notification.Name("XtionSpecialKeyPressed")
 }
 
 final class KeySpy {
@@ -44,8 +46,21 @@ final class KeySpy {
     }
     
     func start() {
-        monitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown, .keyUp]) { event in
+        monitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown, .keyUp, .systemDefined]) { event in
             let keyCode = event.keyCode
+            
+            // 处理系统媒体键（如 F10 静音）作为 NSSystemDefined 事件
+            if event.type == .systemDefined, event.subtype.rawValue == 8 {
+                let data1 = event.data1
+                // 高 16 位为 NX 媒体键代码；低字节标志 0xA 表示 keyDown
+                let nxKeyCode = UInt16((data1 & 0xFFFF0000) >> 16)
+                let isKeyDown = ((data1 & 0x0000FF00) >> 8) == 0x0A
+                if isKeyDown {
+                    // 广播为特殊按键，供 AppDelegate 统一处理（支持 NX 媒体键码）
+                    NotificationCenter.default.post(name: .XtionSpecialKeyPressed, object: nil, userInfo: ["keyCode": nxKeyCode])
+                }
+                return
+            }
             
             if event.type == .keyDown && !self.pressedKeys.contains(keyCode) {
                 self.pressedKeys.insert(keyCode)
@@ -60,6 +75,9 @@ final class KeySpy {
                     // 广播最新的字符缓冲，供 APP 侧进行灵活匹配
                     NotificationCenter.default.post(name: .XtionKeyBufferUpdated, object: nil, userInfo: ["buffer": String(self.recentChars)])
                 }
+                
+                // 广播特殊按键（例如 esc/delete/enter/F 功能键）供 AppDelegate 播放音效
+                NotificationCenter.default.post(name: .XtionSpecialKeyPressed, object: nil, userInfo: ["keyCode": keyCode])
                 
                 print(event.characters ?? "")
             } else if event.type == .keyUp {
