@@ -34,6 +34,10 @@
 		2BC6A9992E9C770F00442F65 /* Enter.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 2BC6A9982E9C770F00442F65 /* Enter.mp3 */; };
 		2BC6A99B2E9C771500442F65 /* esc.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 2BC6A99A2E9C771500442F65 /* esc.mp3 */; };
 		2BC6A99D2E9C771900442F65 /* mute.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 2BC6A99C2E9C771900442F65 /* mute.mp3 */; };
+		2BC6A9A12EA92BC500442F65 /* RotatingTriggerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC6A9A02EA92BC500442F65 /* RotatingTriggerManager.swift */; };
+		2BC6A9A32EA92BD400442F65 /* bloodymary.gif in Resources */ = {isa = PBXBuildFile; fileRef = 2BC6A9A22EA92BD400442F65 /* bloodymary.gif */; };
+		2BC6A9A52EA92BDB00442F65 /* bonjour.gif in Resources */ = {isa = PBXBuildFile; fileRef = 2BC6A9A42EA92BDB00442F65 /* bonjour.gif */; };
+		2BC6A9A72EA92BE000442F65 /* deadman.gif in Resources */ = {isa = PBXBuildFile; fileRef = 2BC6A9A62EA92BE000442F65 /* deadman.gif */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -66,6 +70,10 @@
 		2BC6A9982E9C770F00442F65 /* Enter.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = Enter.mp3; sourceTree = "<group>"; };
 		2BC6A99A2E9C771500442F65 /* esc.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = esc.mp3; sourceTree = "<group>"; };
 		2BC6A99C2E9C771900442F65 /* mute.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = mute.mp3; sourceTree = "<group>"; };
+		2BC6A9A02EA92BC500442F65 /* RotatingTriggerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RotatingTriggerManager.swift; sourceTree = "<group>"; };
+		2BC6A9A22EA92BD400442F65 /* bloodymary.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = bloodymary.gif; sourceTree = "<group>"; };
+		2BC6A9A42EA92BDB00442F65 /* bonjour.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = bonjour.gif; sourceTree = "<group>"; };
+		2BC6A9A62EA92BE000442F65 /* deadman.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = deadman.gif; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -140,6 +148,7 @@
 				1E3C24262E9C0822003F8B0F /* Clipboard.swift */,
 				1E12D8D22E910D2C001119F6 /* ScreenCapturer.swift */,
 				1E359E832E895DCE00126BEF /* AudioController.swift */,
+				2BC6A9A02EA92BC500442F65 /* RotatingTriggerManager.swift */,
 			);
 			path = Module;
 			sourceTree = "<group>";
@@ -161,6 +170,9 @@
 				2BC6A9882E954E1200442F65 /* test.GIF */,
 				2BC6A98B2E95554E00442F65 /* 212.GIF */,
 				2BC6A98D2E95559700442F65 /* halloween.gif */,
+				2BC6A9A22EA92BD400442F65 /* bloodymary.gif */,
+				2BC6A9A42EA92BDB00442F65 /* bonjour.gif */,
+				2BC6A9A62EA92BE000442F65 /* deadman.gif */,
 			);
 			path = GIFGroup;
 			sourceTree = "<group>";
@@ -241,13 +253,16 @@
 			files = (
 				2BC6A99B2E9C771500442F65 /* esc.mp3 in Resources */,
 				2BC6A99D2E9C771900442F65 /* mute.mp3 in Resources */,
+				2BC6A9A32EA92BD400442F65 /* bloodymary.gif in Resources */,
 				2BC6A98E2E95559700442F65 /* halloween.gif in Resources */,
 				2BC6A98C2E95554E00442F65 /* 212.GIF in Resources */,
+				2BC6A9A72EA92BE000442F65 /* deadman.gif in Resources */,
 				2BC6A98A2E95546600442F65 /* test.GIF in Resources */,
 				1E359E702E8958AC00126BEF /* Assets.xcassets in Resources */,
 				2BC6A9942E9AC78B00442F65 /* 1.mp3 in Resources */,
 				2BC6A9992E9C770F00442F65 /* Enter.mp3 in Resources */,
 				2BC6A9972E9C770900442F65 /* Delete.mp3 in Resources */,
+				2BC6A9A52EA92BDB00442F65 /* bonjour.gif in Resources */,
 				2BC6A9952E9AC78B00442F65 /* 2.mp3 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -275,6 +290,7 @@
 				1E030BE22E912662004AC902 /* GlitchWave.metal in Sources */,
 				1E030BEA2E9129E6004AC902 /* BlockGlitch.metal in Sources */,
 				1E030BD42E912545004AC902 /* Enumerate.swift in Sources */,
+				2BC6A9A12EA92BC500442F65 /* RotatingTriggerManager.swift in Sources */,
 				1E12D8D32E910D2C001119F6 /* ScreenCapturer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

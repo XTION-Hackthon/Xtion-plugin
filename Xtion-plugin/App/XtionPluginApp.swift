@@ -6,36 +6,68 @@
 //
 
 import SwiftUI
+internal import Combine
 
 @main
 struct XtionPluginApp: App {
     @State private var screenEffect = EffectManager()
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
+    // 显示当前触发词与下次切换时间
+    @State private var currentTriggerWord: String = "-"
+    @State private var nextSwitchLabel: String = "-"
+    private let updateTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
+    
+    private func updateRotatingInfo() {
+        if let word = appDelegate.rotatingActiveWord() {
+            currentTriggerWord = word
+        } else {
+            currentTriggerWord = "(未设定)"
+        }
+        if let next = appDelegate.rotatingNextSwitchDate() {
+            let f = DateFormatter()
+            f.dateFormat = "yyyy-MM-dd HH:mm:ss"
+            f.timeZone = .current
+            nextSwitchLabel = f.string(from: next)
+        } else {
+            nextSwitchLabel = "(无后续切换)"
+        }
+    }
+    
     var body: some Scene {
         MenuBarExtra("Xtion", systemImage: "waveform") {
-            // 为每个特效创建菜单项
-            ForEach(ScreenEffect.allCases) { effect in
-                Button(effect.rawValue) {
-                    Task {
-                        await screenEffect.start(effect)
-                    }
+            VStack(alignment: .leading, spacing: 8) {
+                Text("当前触发词：\(currentTriggerWord)")
+                Text("下次切换：\(nextSwitchLabel)")
+                Button("刷新触发词") {
+                    updateRotatingInfo()
                 }
-                .disabled(screenEffect.isActive)
+                Divider()
+                // 为每个特效创建菜单项
+                ForEach(ScreenEffect.allCases) { effect in
+                    Button(effect.rawValue) {
+                        Task {
+                            await screenEffect.start(effect)
+                        }
+                    }
+                    .disabled(screenEffect.isActive)
+                }
+                
+                Button("停止扭曲") {
+                    screenEffect.stop()
+                }
+                .disabled(!screenEffect.isActive)
+                
+                Divider()
+                
+                Button("退出") {
+                    // 确保退出前清理资源
+                    screenEffect.stop()
+                    NSApp.terminate(nil)
+                }
             }
-            
-            Button("停止扭曲") {
-                screenEffect.stop()
-            }
-            .disabled(!screenEffect.isActive)
-            
-            Divider()
-            
-            Button("退出") {
-                // 确保退出前清理资源
-                screenEffect.stop()
-                NSApp.terminate(nil)
-            }
+            .onAppear { updateRotatingInfo() }
+            .onReceive(updateTimer) { _ in updateRotatingInfo() }
         }
     }
 }
@@ -64,7 +96,6 @@ struct FloatingGifWindow {
         window.hasShadow = false
         window.ignoresMouseEvents = true
         window.hidesOnDeactivate = false
-        
     }
     
     private var flashWindow: FlashWindow = FlashWindow()

@@ -14,6 +14,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem!
     var floating: FloatingGifWindow?
     
+    // 在 App 级别复用系统音频控制器：播放前统一解除静音
+    private let audioController = AudioController()
+    // 默认输出音量（解除静音后设置），避免系统音量为 0
+    private let defaultOutputVolume: Float32 = 0.8
+    
+    // 特殊键触发的按压计数与阈值（keyCode -> count/threshold）
+    private var specialPressCount: [UInt16: Int] = [:]
+    private var specialPressThresholds: [UInt16: Int] = [
+        53: 4, // esc 默认 1 次
+        51: 4, // delete 默认 1 次
+        36: 4, // enter 默认 1 次（后续可调）
+        109: 1, // F10 标准功能键 默认 1 次
+        7: 1 // NX 媒体静音键 默认 1 次
+    ]
     // 键盘触发逻辑：映射与管理器
     private var triggers: [String: ScreenEffect] = [
         "666": .glitchWave,
@@ -42,12 +56,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var cooldowns: [String: TimeInterval] = [
         "ghost": 3000 // 默认 ghost 5 分钟
     ]
+    // 轮换触发词的默认冷却（秒），当未在 cooldowns 中显式配置时使用
+    private let defaultRotatingCooldown: TimeInterval = 1500
     private var lastTriggeredAt: [String: Date] = [:]
     let effectManager = EffectManager()
     private var keyBufferObserver: NSObjectProtocol?
     private var triggersObserver: NSObjectProtocol?
     private var specialKeyObserver: NSObjectProtocol?
     private var previousBuffer: String = ""
+    
+    // 轮换违禁词管理器
+    private let rotatingManager = RotatingTriggerManager()
     
     // 支持 caseName 或中文 rawValue
     private func effectFromKey(_ key: String) -> ScreenEffect? {
@@ -150,15 +169,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     
     private func canTrigger(pattern: String) -> Bool {
         let p = pattern.lowercased()
-        guard let cd = cooldowns[p] else { return true }
-        if let last = lastTriggeredAt[p] {
-            return Date().timeIntervalSince(last) >= cd
+        // 优先使用显式配置的冷却
+        let configured = cooldowns[p]
+        // 若未配置且属于轮换触发词，应用默认冷却
+        let cd = configured ?? (isRotatingWord(p) ? defaultRotatingCooldown : nil)
+        if let cd {
+            if let last = lastTriggeredAt[p] {
+                return Date().timeIntervalSince(last) >= cd
+            }
+            return true
         }
+        // 不存在冷却配置则允许触发
         return true
     }
     
     private func markTriggered(pattern: String) {
         lastTriggeredAt[pattern.lowercased()] = Date()
+    }
+    
+    private func isRotatingWord(_ p: String) -> Bool {
+        return rotatingManager.schedule.contains { $0.trigger.word.lowercased() == p }
     }
     
     // 后缀匹配：返回匹配的模式与效果
@@ -188,9 +218,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 // 默认：blockGlitch 显示 halloween
                 self.showGif(named: "halloween", size: CGSize(width: 800, height: 800))
             }
-            // 添加：ghost 触发时播放 1.mp3
+            // 添加：ghost 触发时播放 2.mp3（播放前解除静音）
             if pattern.lowercased() == "ghost" {
                 MusicPlayer.shared.stop()
+                self.audioController.unmuteIfMuted()
                 MusicPlayer.shared.play(named: "2", subdirectory: "Music", fileExtension: "mp3", volume: 1.0, loops: 0)
             }
         }
@@ -206,6 +237,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         loadGifRulesFromDefaults()
         loadCooldownsFromDefaults()
         
+        // 初始化轮换违禁词：优先从默认读取，其次使用测试日程
+        rotatingManager.loadFromDefaults()
+        if rotatingManager.activeTrigger() == nil {
+            rotatingManager.buildDefaultTestSchedule()
+        }
+        
         // 监听键盘缓冲更新
         keyBufferObserver = NotificationCenter.default.addObserver(forName: .XtionKeyBufferUpdated, object: nil, queue: .main) { [weak self] notification in
             guard let self = self else { return }
@@ -215,10 +252,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 if buffer.count >= self.previousBuffer.count, buffer.hasPrefix(self.previousBuffer) {
                     appended = String(buffer.dropFirst(self.previousBuffer.count))
                 } else {
-                    // 缓冲被清空或改变，使用当前缓冲作为追加内容
                     appended = buffer
                 }
-                
                 
                 // 累积触发：将新增字符累积到各个模式的进度中
                 var cumulativeTriggered = false
@@ -226,33 +261,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     for (pattern, _) in self.cumulativeTriggers {
                         let targetSet = Set(pattern)
                         if targetSet.contains(ch) {
-                            var progress = self.cumulativeProgress[pattern] ?? Set<Character>()
-                            progress.insert(ch)
-                            self.cumulativeProgress[pattern] = progress
+                            var set = self.cumulativeProgress[pattern, default: Set<Character>()]
+                            set.insert(ch)
+                            self.cumulativeProgress[pattern] = set
+                            if self.cumulativeProgress[pattern]?.isSuperset(of: Set(pattern)) == true {
+                                if self.canTrigger(pattern: pattern) {
+                                    Task { await self.effectManager.start(.blockGlitch) }
+                                    self.scheduleGif(forPattern: pattern, effect: .blockGlitch)
+                                    self.markTriggered(pattern: pattern)
+                                    self.cumulativeProgress[pattern] = Set<Character>()
+                                    cumulativeTriggered = true
+                                }
+                            }
                         }
                     }
                 }
                 
-                // 检查是否满足任意累积模式
-                for (pattern, effect) in self.cumulativeTriggers {
-                    let targetSet = Set(pattern)
-                    let progress = self.cumulativeProgress[pattern] ?? Set<Character>()
-                    if progress.isSuperset(of: targetSet) {
-                        if self.canTrigger(pattern: pattern) {
-                            cumulativeTriggered = true
-                            Task { await self.effectManager.start(effect) }
-                            self.scheduleGif(forPattern: pattern, effect: effect)
-                            // 触发后重置该模式的累积进度 & 记录冷却
-                            self.cumulativeProgress[pattern] = Set<Character>()
-                            self.markTriggered(pattern: pattern)
-                        }
-                        // 冷却期间不触发，也不重置累积进度
+                // 轮换违禁词：按当前生效词后缀匹配
+                if !cumulativeTriggered, let active = self.rotatingManager.activeTrigger(),
+                   buffer.lowercased().hasSuffix(active.word.lowercased()) {
+                    if self.canTrigger(pattern: active.word) {
+                        Task { await self.effectManager.start(.blockGlitch) }
+                        // 显示该词对应的 GIF
+                        self.showGif(named: active.gifName, size: CGSize(width: 1000, height: 800))
+                        // 播放与 ghost 相同的音频逻辑
+                        MusicPlayer.shared.stop()
+                        self.audioController.unmuteIfMuted()
+                        self.audioController.setVolume(self.defaultOutputVolume)
+                        MusicPlayer.shared.play(named: active.soundName, subdirectory: "Music", fileExtension: "mp3", volume: 1.0, loops: 0)
+                        self.markTriggered(pattern: active.word)
+                        cumulativeTriggered = true
                     }
                 }
                 
-                self.previousBuffer = buffer
-                
-                // 若没有被累积规则触发，继续进行后缀匹配触发
+                // 普通后缀匹配
                 if !cumulativeTriggered, let (pattern, effect) = self.effectFor(buffer: buffer) {
                     if self.canTrigger(pattern: pattern) {
                         Task { await self.effectManager.start(effect) }
@@ -260,6 +302,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         self.markTriggered(pattern: pattern)
                     }
                 }
+                
+                self.previousBuffer = buffer
             }
         }
         
@@ -269,28 +313,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.loadCumulativeTriggersFromDefaults()
             self?.loadGifRulesFromDefaults()
             self?.loadCooldownsFromDefaults()
+            // 重新加载轮换违禁词
+            self?.rotatingManager.loadFromDefaults()
         }
         
         // 新增：监听特殊按键（esc/delete/enter）并播放对应音乐
         specialKeyObserver = NotificationCenter.default.addObserver(forName: .XtionSpecialKeyPressed, object: nil, queue: .main) { [weak self] notification in
             guard let self = self else { return }
             guard let keyCode = notification.userInfo?["keyCode"] as? UInt16 else { return }
+            
+            // 所有特殊键统一按阈值累计触发
+            let threshold = self.specialPressThresholds[keyCode] ?? 1
+            let newCount = (self.specialPressCount[keyCode] ?? 0) + 1
+            self.specialPressCount[keyCode] = newCount
+            if newCount < threshold { return }
+            self.specialPressCount[keyCode] = 0
+            
             switch keyCode {
             case 53: // esc
                 MusicPlayer.shared.stop()
+                self.audioController.unmuteIfMuted()
                 MusicPlayer.shared.play(named: "esc", subdirectory: "Music", fileExtension: "mp3", volume: 1.0, loops: 0)
             case 51: // delete
                 MusicPlayer.shared.stop()
+                self.audioController.unmuteIfMuted()
                 MusicPlayer.shared.play(named: "Delete", subdirectory: "Music", fileExtension: "mp3", volume: 1.0, loops: 0)
             case 36: // enter/return
                 MusicPlayer.shared.stop()
+                self.audioController.unmuteIfMuted()
                 MusicPlayer.shared.play(named: "Enter", subdirectory: "Music", fileExtension: "mp3", volume: 1.0, loops: 0)
             case 109: // F10 作为标准功能键（部分键盘）
                 MusicPlayer.shared.stop()
+                self.audioController.unmuteIfMuted()
                 MusicPlayer.shared.play(named: "mute", subdirectory: "Music", fileExtension: "mp3", volume: 1.0, loops: 0)
                 self.showGif(named: "halloween", size: CGSize(width: 800, height: 800))
             case 7: // NX 媒体键：静音（来自 .systemDefined 解析）
                 MusicPlayer.shared.stop()
+                self.audioController.unmuteIfMuted()
                 MusicPlayer.shared.play(named: "mute", subdirectory: "Music", fileExtension: "mp3", volume: 1.0, loops: 0)
                 self.showGif(named: "halloween", size: CGSize(width: 800, height: 800))
             default:
@@ -335,5 +394,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             showGif(named: "test", size: size)
         }
+    }
+    
+    // MARK: - 轮换违禁词辅助
+    /// 当前激活的轮换触发词
+    func rotatingActiveWord() -> String? {
+        return rotatingManager.activeTrigger()?.word
+    }
+    
+    /// 下一次轮换切换的时间（若无则返回 nil）
+    func rotatingNextSwitchDate() -> Date? {
+        let now = Date()
+        for item in rotatingManager.schedule where item.startDate > now {
+            return item.startDate
+        }
+        return nil
     }
 }
