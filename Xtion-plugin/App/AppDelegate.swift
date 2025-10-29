@@ -9,6 +9,15 @@ import Cocoa
 import AppKit
 import SwiftUI
 
+public let gifGroupNames: [String] = [
+    "1010", "11", "1111", "22", "2222",
+    "33", "44", "55", "66", "77", "88", "99"
+]
+
+@inline(__always)
+fileprivate func pickRandom<T>(from list: [T]) -> T? {
+    return list.randomElement()
+}
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let monitor = KeySpy()
     var statusItem: NSStatusItem!
@@ -25,18 +34,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         53: 4, // esc 默认 1 次
         51: 4, // delete 默认 1 次
         36: 4, // enter 默认 1 次（后续可调）
-        109: 1, // F10 标准功能键 默认 1 次
-        7: 1 // NX 媒体静音键 默认 1 次
     ]
     // 键盘触发逻辑：映射与管理器
     private var triggers: [String: ScreenEffect] = [
         "666": .glitchWave,
-        "xtion": .heartbeatGlow,
-        "dead": .snowStatic
+        "xtion": .heartbeatGlow
     ]
     // 动态累积触发映射（键为需要累积的字符串，例如 "ghost"）
     private var cumulativeTriggers: [String: ScreenEffect] = [
-        "ghost": .blockGlitch
+        "ghost": .blockGlitch,
+        "dead": .blockGlitch,
+        "kill": .blockGlitch,
+        "darkroom": .blockGlitch,
+        "panic": .blockGlitch
     ]
     
     // 每个累积触发的当前进度（集合，包含已出现的字母）
@@ -49,12 +59,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private var gifRules: [String: GifSelector] = [
-        "ghost": .named("halloween")
+        "ghost": .named("halloween"),
+        "666": .named(pickRandom(from: gifGroupNames) ?? "halloween"),
+        "xtion": .named(pickRandom(from: gifGroupNames) ?? "halloween"),
+        "dead": .named(pickRandom(from: gifGroupNames) ?? "halloween")
     ]
     
     // 每词的冷却时间（秒）与最后触发时间
     private var cooldowns: [String: TimeInterval] = [
-        "ghost": 3000 // 默认 ghost 5 分钟
+        "ghost": 3000, // 默认 ghost 冷却（秒）
+        "dead": 3000,
+        "kill": 3000,
+        "darkroom": 3000,
+        "panic": 3000,
+        "666": 30,     // 默认 666 冷却（秒）
+        "xtion": 60    // 默认 xtion 冷却（秒）
     ]
     // 轮换触发词的默认冷却（秒），当未在 cooldowns 中显式配置时使用
     private let defaultRotatingCooldown: TimeInterval = 1500
@@ -140,7 +159,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
             if !newMap.isEmpty {
-                gifRules = newMap
+                // 与默认值合并，用户配置覆盖默认
+                gifRules.merge(newMap) { _, new in new }
             }
         }
     }
@@ -162,7 +182,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
             if !newMap.isEmpty {
-                cooldowns = newMap
+                // 与默认值合并，用户配置覆盖默认
+                cooldowns.merge(newMap) { _, new in new }
             }
         }
     }
@@ -266,8 +287,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                             self.cumulativeProgress[pattern] = set
                             if self.cumulativeProgress[pattern]?.isSuperset(of: Set(pattern)) == true {
                                 if self.canTrigger(pattern: pattern) {
-                                    Task { await self.effectManager.start(.blockGlitch) }
-                                    self.scheduleGif(forPattern: pattern, effect: .blockGlitch)
+                                    let pLower = pattern.lowercased()
+                                    if pLower == "ghost" {
+                                        Task { await self.effectManager.start(.blockGlitch) }
+                                        self.scheduleGif(forPattern: pattern, effect: .blockGlitch)
+                                    } else if ["dead","kill","darkroom","panic"].contains(pLower) {
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                                            self.showRandomGifFromGroup(size: CGSize(width: 800, height: 800))
+                                            DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+                                                self.showGif(named: "jieju1", size: CGSize(width: 800, height: 800))
+                                            }
+                                        }
+                                    } else {
+                                        Task { await self.effectManager.start(.blockGlitch) }
+                                        self.scheduleGif(forPattern: pattern, effect: .blockGlitch)
+                                    }
                                     self.markTriggered(pattern: pattern)
                                     self.cumulativeProgress[pattern] = Set<Character>()
                                     cumulativeTriggered = true
@@ -343,15 +377,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.audioController.unmuteIfMuted()
                 MusicPlayer.shared.play(named: "Enter", subdirectory: "Music", fileExtension: "mp3", volume: 1.0, loops: 0)
             case 109: // F10 作为标准功能键（部分键盘）
-                MusicPlayer.shared.stop()
-                self.audioController.unmuteIfMuted()
-                MusicPlayer.shared.play(named: "mute", subdirectory: "Music", fileExtension: "mp3", volume: 1.0, loops: 0)
-                self.showGif(named: "halloween", size: CGSize(width: 800, height: 800))
-            case 7: // NX 媒体键：静音（来自 .systemDefined 解析）
-                MusicPlayer.shared.stop()
-                self.audioController.unmuteIfMuted()
-                MusicPlayer.shared.play(named: "mute", subdirectory: "Music", fileExtension: "mp3", volume: 1.0, loops: 0)
-                self.showGif(named: "halloween", size: CGSize(width: 800, height: 800))
+                break
             default:
                 break
             }
@@ -410,4 +436,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         return nil
     }
+
+    
 }
