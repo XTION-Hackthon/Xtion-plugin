@@ -69,6 +69,11 @@ final class RotatingTriggerManager {
         ]
     }
     
+    /// 设置自定义日程（按开始时间自动排序）
+    func setSchedule(_ items: [RotatingScheduleItem]) {
+        schedule = items.sorted { $0.startDate < $1.startDate }
+    }
+    
     /// 当前时间下的生效触发词；如果有多个，取最近一个开始时间不晚于当前的项
     func activeTrigger(at date: Date = Date()) -> RotatingTrigger? {
         guard !schedule.isEmpty else { return nil }

@@ -7,6 +7,7 @@
 
 import SwiftUI
 internal import Combine
+import AVKit
 
 @main
 struct XtionPluginApp: App {
@@ -120,6 +121,64 @@ struct FloatingGifWindow {
     }
 }
 
+struct FloatingVideoWindow {
+    private var window: NSWindow!
+    private var player: AVPlayer?
+    private var playerView: AVPlayerView?
+    private var estimatedDuration: TimeInterval = 6.0
+    
+    init(videoName: String, size: CGSize = CGSize(width: 800, height: 600)) {
+        let playerView = AVPlayerView()
+        playerView.controlsStyle = .none
+        playerView.showsFullScreenToggleButton = false
+        playerView.videoGravity = .resizeAspect
+        
+        let bundle = Bundle.main
+        let url = bundle.url(forResource: videoName, withExtension: "mp4", subdirectory: "GIFGroup")
+            ?? bundle.url(forResource: videoName, withExtension: "mp4")
+        if let url {
+            let asset = AVURLAsset(url: url)
+            let seconds = CMTimeGetSeconds(asset.duration)
+            if seconds.isFinite && seconds > 0 { estimatedDuration = seconds }
+            let player = AVPlayer(url: url)
+            playerView.player = player
+            self.player = player
+        }
+        
+        window = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: size.width, height: size.height),
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = playerView
+        window.isOpaque = false
+        window.backgroundColor = .clear
+        window.level = .floating
+        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        window.hasShadow = false
+        window.ignoresMouseEvents = true
+        window.hidesOnDeactivate = false
+        
+        self.playerView = playerView
+    }
+    
+    func show() {
+        if let screen = NSScreen.main {
+            let screenFrame = screen.visibleFrame
+            let x = screenFrame.midX - window.frame.width / 2
+            let y = screenFrame.midY - window.frame.height / 2
+            window.setFrameOrigin(NSPoint(x: x, y: y))
+        }
+        DispatchQueue.main.async {
+            window.makeKeyAndOrderFront(nil)
+            player?.play()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + estimatedDuration) {
+            window.orderOut(nil)
+        }
+    }
+}
 struct GifImage: NSViewRepresentable {
     private let name: String
     
@@ -132,7 +191,15 @@ struct GifImage: NSViewRepresentable {
         imageView.canDrawSubviewsIntoLayer = true
         imageView.imageScaling = .scaleProportionallyUpOrDown
         
-        if let url = Bundle.main.url(forResource: name, withExtension: "gif"),
+        // 优先在 GIFGroup 子目录中查找，同时兼容 .gif / .GIF 扩展名
+        let bundle = Bundle.main
+        let candidates: [URL?] = [
+            bundle.url(forResource: name, withExtension: "gif", subdirectory: "GIFGroup"),
+            bundle.url(forResource: name, withExtension: "GIF", subdirectory: "GIFGroup"),
+            bundle.url(forResource: name, withExtension: "gif"),
+            bundle.url(forResource: name, withExtension: "GIF")
+        ]
+        if let url = candidates.compactMap({ $0 }).first,
            let data = try? Data(contentsOf: url),
            let image = NSImage(data: data) {
             imageView.image = image

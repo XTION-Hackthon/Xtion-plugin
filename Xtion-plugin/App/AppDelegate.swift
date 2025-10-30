@@ -16,12 +16,17 @@ public let gifGroupNames: [String] = [
 
 @inline(__always)
 fileprivate func pickRandom<T>(from list: [T]) -> T? {
-    return list.randomElement()
+    print("[pickRandom] list:", list)
+    let chosen = list.randomElement()
+    print("[pickRandom] chosen:", String(describing: chosen))
+    return chosen   
 }
+
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let monitor = KeySpy()
     var statusItem: NSStatusItem!
     var floating: FloatingGifWindow?
+    var floatingVideo: FloatingVideoWindow?
     
     // 在 App 级别复用系统音频控制器：播放前统一解除静音
     private let audioController = AudioController()
@@ -32,7 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var specialPressCount: [UInt16: Int] = [:]
     private var specialPressThresholds: [UInt16: Int] = [
         53: 4, // esc 默认 1 次
-        51: 4, // delete 默认 1 次
+        51: 100, // delete 默认 1 次
         36: 4, // enter 默认 1 次（后续可调）
     ]
     // 键盘触发逻辑：映射与管理器
@@ -40,6 +45,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         "666": .glitchWave,
         "xtion": .heartbeatGlow
     ]
+    
     // 动态累积触发映射（键为需要累积的字符串，例如 "ghost"）
     private var cumulativeTriggers: [String: ScreenEffect] = [
         "ghost": .blockGlitch,
@@ -60,21 +66,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var gifRules: [String: GifSelector] = [
         "ghost": .named("halloween"),
-        "666": .named(pickRandom(from: gifGroupNames) ?? "halloween"),
-        "xtion": .named(pickRandom(from: gifGroupNames) ?? "halloween"),
-        "dead": .named(pickRandom(from: gifGroupNames) ?? "halloween")
+        "666": .random(folder: nil),
+        "xtion": .named("xtion"),
+        "dead": .random(folder: nil),
+        "kill": .random(folder: nil),
+        "darkroom": .named("halloween"),
+        "panic": .random(folder: nil),
     ]
     
     // 每词的冷却时间（秒）与最后触发时间
     private var cooldowns: [String: TimeInterval] = [
         "ghost": 3000, // 默认 ghost 冷却（秒）
-        "dead": 3000,
+        "dead": 3333,
         "kill": 3000,
-        "darkroom": 3000,
+        "darkroom": 3666,
         "panic": 3000,
-        "666": 30,     // 默认 666 冷却（秒）
-        "xtion": 60    // 默认 xtion 冷却（秒）
+        "666": 2500,     // 默认 666 冷却（秒）
+        "xtion": 4444    // 默认 xtion 冷却（秒）
     ]
+    
     // 轮换触发词的默认冷却（秒），当未在 cooldowns 中显式配置时使用
     private let defaultRotatingCooldown: TimeInterval = 1500
     private var lastTriggeredAt: [String: Date] = [:]
@@ -223,27 +233,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // 统一的 GIF 调度逻辑：优先使用规则，否则按效果默认
     private func scheduleGif(forPattern pattern: String, effect: ScreenEffect) {
         let selector = gifRules[pattern.lowercased()]
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        let size = (pattern.lowercased() == "xtion") ? CGSize(width: 1512, height: 900) : CGSize(width: 800, height: 800)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             if let selector = selector {
                 switch selector {
                 case .named(let name):
-                    self.showGif(named: name, size: CGSize(width: 800, height: 800))
+                    self.showGif(named: name, size: size)
                 case .random(let folder):
                     if let folder, !folder.isEmpty {
-                        self.showRandomGif(fromSubdirectory: folder, size: CGSize(width: 800, height: 800))
+                        self.showRandomGif(fromSubdirectory: folder, size: size)
                     } else {
-                        self.showRandomGifFromGroup(size: CGSize(width: 800, height: 800))
+                        self.showRandomGifFromGroup(size: size)
                     }
                 }
             } else if effect == .blockGlitch {
                 // 默认：blockGlitch 显示 halloween
-                self.showGif(named: "halloween", size: CGSize(width: 800, height: 800))
+                self.showGif(named: "halloween", size: size)
             }
-            // 添加：ghost 触发时播放 2.mp3（播放前解除静音）
-            if pattern.lowercased() == "ghost" {
+            // 添加：ghost/darkroom/panic 触发时播放 2.mp3（播放前解除静音）
+            let pLower = pattern.lowercased()
+            if ["ghost","darkroom","panic"].contains(pLower) {
                 MusicPlayer.shared.stop()
                 self.audioController.unmuteIfMuted()
+                self.audioController.setVolume(self.defaultOutputVolume)
                 MusicPlayer.shared.play(named: "2", subdirectory: "Music", fileExtension: "mp3", volume: 1.0, loops: 0)
+            }
+            // xtion: gif 结束后紧跟播放 mp4
+            if pLower == "xtion" {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+                    self.showVideo(named: "xtion", size: size)
+                }
             }
         }
     }
@@ -260,7 +279,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         
         // 初始化轮换违禁词：优先从默认读取，其次使用测试日程
         rotatingManager.loadFromDefaults()
-        if rotatingManager.activeTrigger() == nil {
+        self.applyFlowingTriggerSchedule()
+        if rotatingManager.schedule.isEmpty {
             rotatingManager.buildDefaultTestSchedule()
         }
         
@@ -288,14 +308,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                             if self.cumulativeProgress[pattern]?.isSuperset(of: Set(pattern)) == true {
                                 if self.canTrigger(pattern: pattern) {
                                     let pLower = pattern.lowercased()
-                                    if pLower == "ghost" {
+                                    if ["ghost","darkroom","panic"].contains(pLower) {
                                         Task { await self.effectManager.start(.blockGlitch) }
                                         self.scheduleGif(forPattern: pattern, effect: .blockGlitch)
-                                    } else if ["dead","kill","darkroom","panic"].contains(pLower) {
-                                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                                        // 原效果与声音/首张 GIF 后，再追加一张 jieju3
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                            DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+                                                self.showGif(named: "jieju3", size: CGSize(width: 800, height: 800))
+                                            }
+                                        }
+                                    } else if ["dead","kill"].contains(pLower) {
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                                             self.showRandomGifFromGroup(size: CGSize(width: 800, height: 800))
                                             DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
-                                                self.showGif(named: "jieju1", size: CGSize(width: 800, height: 800))
+                                                self.showGif(named: "jieju2", size: CGSize(width: 800, height: 800))
                                             }
                                         }
                                     } else {
@@ -323,6 +349,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         self.audioController.unmuteIfMuted()
                         self.audioController.setVolume(self.defaultOutputVolume)
                         MusicPlayer.shared.play(named: active.soundName, subdirectory: "Music", fileExtension: "mp3", volume: 1.0, loops: 0)
+                        // 追加：所有流动触发词再追加一张 jieju4.gif（延迟 4 秒）
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                            self.showGif(named: "jieju4", size: CGSize(width: 800, height: 800))
+                        }
                         self.markTriggered(pattern: active.word)
                         cumulativeTriggered = true
                     }
@@ -372,6 +402,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 MusicPlayer.shared.stop()
                 self.audioController.unmuteIfMuted()
                 MusicPlayer.shared.play(named: "Delete", subdirectory: "Music", fileExtension: "mp3", volume: 1.0, loops: 0)
+                // 达到阈值（30 次）后弹出随机池 GIF，再接 jieju2
+                self.showRandomGifFromGroup(size: CGSize(width: 800, height: 800))
+                DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+                    self.showGif(named: "jieju1", size: CGSize(width: 800, height: 800))
+                }
             case 36: // enter/return
                 MusicPlayer.shared.stop()
                 self.audioController.unmuteIfMuted()
@@ -401,19 +436,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func showRandomGifFromGroup(size: CGSize = CGSize(width: 800, height: 800)) {
-        let urls = Bundle.main.urls(forResourcesWithExtension: "gif", subdirectory: "GIFGroup") ?? []
-        if let random = urls.randomElement() {
-            let name = random.deletingPathExtension().lastPathComponent
-            showGif(named: name, size: size)
-        } else {
-            // fallback
-            showGif(named: "test", size: size)
-        }
+        // 基于预设的 gifGroupNames 列表，每次调用时随机挑选
+        let name = pickRandom(from: gifGroupNames) ?? "test"
+        showGif(named: name, size: size)
+    }
+    
+    func showVideo(named: String, size: CGSize = CGSize(width: 800, height: 600)) {
+        floatingVideo = FloatingVideoWindow(videoName: named, size: size)
+        floatingVideo?.show()
     }
     
     // 指定任意子目录随机弹出 GIF
     func showRandomGif(fromSubdirectory subdir: String, size: CGSize = CGSize(width: 800, height: 800)) {
-        let urls = Bundle.main.urls(forResourcesWithExtension: "gif", subdirectory: subdir) ?? []
+        let urlsLower = Bundle.main.urls(forResourcesWithExtension: "gif", subdirectory: subdir) ?? []
+        let urlsUpper = Bundle.main.urls(forResourcesWithExtension: "GIF", subdirectory: subdir) ?? []
+        let urls = urlsLower + urlsUpper
         if let random = urls.randomElement() {
             let name = random.deletingPathExtension().lastPathComponent
             showGif(named: name, size: size)
@@ -437,5 +474,66 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return nil
     }
 
-    
+    // MARK: - 自定义流动触发词日程
+    private func applyFlowingTriggerSchedule() {
+        let cal = Calendar.current
+        var items: [RotatingScheduleItem] = []
+        func makeDate(_ y: Int, _ m: Int, _ d: Int, _ h: Int, _ min: Int) -> Date? {
+            var comps = DateComponents()
+            comps.year = y
+            comps.month = m
+            comps.day = d
+            comps.hour = h
+            comps.minute = min
+            comps.timeZone = .current
+            return cal.date(from: comps)
+        }
+        // 2025-10-31 22:00 bonjour
+        if let d1 = makeDate(2025, 10, 30, 1, 0) {
+            items.append(RotatingScheduleItem(startDate: d1, trigger: RotatingTrigger(word: "bonjour", gifName: "bonjour", soundName: "2")))
+        }
+        // 10月31号24:00 -> 11月1号00:00 midnight
+        if let d2 = makeDate(2025, 10, 30, 1, 30) {
+            items.append(RotatingScheduleItem(startDate: d2, trigger: RotatingTrigger(word: "midnight", gifName: "halloween", soundName: "2")))
+        }
+        // 11月1号2:00 mirror
+        if let d3 = makeDate(2025, 11, 1, 2, 0) {
+            items.append(RotatingScheduleItem(startDate: d3, trigger: RotatingTrigger(word: "mirror", gifName: "halloween", soundName: "2")))
+        }
+        // 11月1号12:00 signal
+        if let d4 = makeDate(2025, 11, 1, 12, 0) {
+            items.append(RotatingScheduleItem(startDate: d4, trigger: RotatingTrigger(word: "signal", gifName: "halloween", soundName: "2")))
+        }
+        // 11月1号14:00 shadow
+        if let d5 = makeDate(2025, 11, 1, 14, 0) {
+            items.append(RotatingScheduleItem(startDate: d5, trigger: RotatingTrigger(word: "shadow", gifName: "halloween", soundName: "2")))
+        }
+        // 11月1号16:00 password
+        if let d6 = makeDate(2025, 11, 1, 16, 0) {
+            items.append(RotatingScheduleItem(startDate: d6, trigger: RotatingTrigger(word: "password", gifName: "halloween", soundName: "2")))
+        }
+        
+        rotatingManager.setSchedule(items)
+        
+        // 同步到 UserDefaults 以便持久化
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd HH:mm"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = .current
+        let jsonArr: [[String: String]] = items.map { item in
+            [
+                "start": f.string(from: item.startDate),
+                "word": item.trigger.word,
+                "gif": item.trigger.gifName,
+                "sound": item.trigger.soundName
+            ]
+        }
+        if let data = try? JSONSerialization.data(withJSONObject: jsonArr, options: []),
+           let s = String(data: data, encoding: .utf8) {
+            UserDefaults.standard.set(s, forKey: "XtionRotatingTriggerSchedule")
+        }
+    }
+
 }
+
+// moved showVideo inside AppDelegate class
