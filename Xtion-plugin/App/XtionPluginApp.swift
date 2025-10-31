@@ -38,12 +38,6 @@ struct XtionPluginApp: App {
     var body: some Scene {
         MenuBarExtra("Xtion", systemImage: "waveform") {
             VStack(alignment: .leading, spacing: 8) {
-                Text("当前触发词：\(currentTriggerWord)")
-                Text("下次切换：\(nextSwitchLabel)")
-                Button("刷新触发词") {
-                    updateRotatingInfo()
-                }
-                Divider()
                 // 为每个特效创建菜单项
                 ForEach(ScreenEffect.allCases) { effect in
                     Button(effect.rawValue) {
