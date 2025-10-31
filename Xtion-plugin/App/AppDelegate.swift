@@ -489,11 +489,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return cal.date(from: comps)
         }
         // 2025-10-31 22:00 bonjour
-        if let d1 = makeDate(2025, 10, 30, 1, 0) {
+        if let d1 = makeDate(2025, 10, 31, 22, 0) {
             items.append(RotatingScheduleItem(startDate: d1, trigger: RotatingTrigger(word: "bonjour", gifName: "bonjour", soundName: "2")))
         }
         // 10月31号24:00 -> 11月1号00:00 midnight
-        if let d2 = makeDate(2025, 10, 30, 1, 30) {
+        if let d2 = makeDate(2025, 10, 31, 23, 59) {
             items.append(RotatingScheduleItem(startDate: d2, trigger: RotatingTrigger(word: "midnight", gifName: "halloween", soundName: "2")))
         }
         // 11月1号2:00 mirror
